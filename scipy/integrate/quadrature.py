@@ -394,7 +394,7 @@ def simps(y, x=None, dx=1, axis=-1, even='avg', method='composite'):
             if method in ['3/8-th', 'extended']:
                 # Checking whether x is equally spaced or not.
                 h = diff(x, n=1)
-                if np.all(h ==h[0] ) is False:
+                if np.all(h == h[0]) is False:
                     raise ValueError("If given, and method used is extended or 3/8-th" 
                         "x must be equally spaced.")
                 else:
@@ -419,7 +419,7 @@ def simps(y, x=None, dx=1, axis=-1, even='avg', method='composite'):
 
     # Implementing Simpson's 3/8-th rule.
     
-    if method is '3/8-th' and n%3!=0:
+    if method is '3/8-th' and n % 3!=0:
         raise ValueError("If using Simpson's 3/8-th rule number of samples "
             "must be of the form 3*k+1.")
     elif method is '3/8-th':
@@ -469,7 +469,7 @@ def simps(y, x=None, dx=1, axis=-1, even='avg', method='composite'):
 
     # Calculating by composite rule. 
     if method is 'composite':
-        if N%2==0:
+        if N % 2 == 0:
             val = 0.0
             result = 0.0
             slice1 = (slice(None),)*nd
