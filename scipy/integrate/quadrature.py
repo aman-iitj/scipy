@@ -421,7 +421,7 @@ def simps(y, x=None, dx=1, axis=-1, even='avg', method='composite'):
     
     if method is '3/8-th' and n%3!=0:
     	raise ValueError("If using Simpson's 3/8-th rule number of samples "
-    		"must be of the form 3*n+1.")
+    		"must be of the form 3*k+1.")
     elif method is '3/8-th':
     	start = 0
     	stop = N-2
