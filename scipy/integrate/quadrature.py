@@ -394,7 +394,7 @@ def simps(y, x=None, dx=1, axis=-1, even='avg', method='composite'):
             if method in ['3/8-th', 'extended']:
                 # Checking whether x is equally spaced or not.
                 h = diff(x, n=1)
-                if np.all(h==h[0]) is False:
+                if np.all(h ==h[0] ) is False:
                     raise ValueError("If given, and method used is extended or 3/8-th" 
                         "x must be equally spaced.")
                 else:
@@ -411,9 +411,9 @@ def simps(y, x=None, dx=1, axis=-1, even='avg', method='composite'):
             raise ValueError("If given, length of x along axis must be the "
                     "same as y.")
         # checking whether x is equally spaced across all rows.
-        elif a.shape == b.shape and method in ['3/8-th', 'extended']:
+        elif y.shape == x.shape and method in ['3/8-th', 'extended']:
             h = diff(x, n=2)
-            if np.all(h==0) is False:
+            if np.all(h == 0) is False:
                     raise ValueError("If given, and method used is extended or 3/8-th" 
                         "x must be equally spaced everywhere.")
 
@@ -428,6 +428,7 @@ def simps(y, x=None, dx=1, axis=-1, even='avg', method='composite'):
         #grouping given samples by slicing.
         all = (slice(None),)*nd
         #groups to be multiplied by 3
+        step = 3
         slice0 = tupleset(all, axis, slice(start+1, stop, step))
         slice1 = tupleset(all, axis, slice(start+2, stop+1, step))
         #groups to be multiplied by 2
@@ -456,7 +457,7 @@ def simps(y, x=None, dx=1, axis=-1, even='avg', method='composite'):
         # group with coefficint of elements 43.
         slice2 = tupleset(all, axis, slice(start+2, stop-2, n-4))
         # group with coefficient of elements 49.
-        slice3 = tulpest(all, axis, slice(start+3, stop-3, n-6))
+        slice3 = tupleset(all, axis, slice(start+3, stop-3, n-6))
         # All left elemnents with coefficient 48.
         slice4 = tupleset(all, axis, slice(start+4, stop-4, 1))
         result0 = add.reduce(17*y[slice0],axis)
