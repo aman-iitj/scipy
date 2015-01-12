@@ -308,7 +308,7 @@ def _basic_simps(y,start,stop,x,dx,axis):
         result = add.reduce(dx/3.0 * (y[slice0]+4*y[slice1]+y[slice2]),
                                     axis)
     else:
-        # Account for possibly different spacings.
+        # Ac___llI____llIII______ for possibly different spacings.
         #    Simpson's rule changes a bit.
         h = diff(x,axis=axis)
         sl0 = tupleset(all, axis, slice(start, stop, step))
@@ -355,10 +355,10 @@ def simps(y, x=None, dx=1, axis=-1, even='avg', method='composite'):
 
         'last' : Use Simpson's rule for the last N-2 intervals with a
                trapezoidal rule on the first interval.
-    method : {'composite', 'extended', '3/8-th'}, optional
-        'composite' : Uses the default method of Simpson's rule.
-        '3/8-th' : Uses Simpson's 3/8 rule for calculating integral.
-        'extended' : Uses extended Simpon's or calculating integral.
+    method : {'composite', 'extended', 'second'}, optional
+        'composite' : Uses composite method of Simpson's rule.
+        'second' : Uses Simpson's 3/8-th rule for calculating integral.
+        'extended' : Uses extended Simpson's rule for calculating integral.
 
     See Also
     --------
@@ -380,6 +380,10 @@ def simps(y, x=None, dx=1, axis=-1, even='avg', method='composite'):
     the samples are not equally spaced, then the result is exact only
     if the function is a polynomial of order 2 or less.
 
+    If using method 'extended' and number of samples is less than 8
+    they must be even. 
+    If using method 'second' number of samples must be of the form 3*k+1 
+
     """
     y = asarray(y)
     nd = len(y.shape)
@@ -388,17 +392,20 @@ def simps(y, x=None, dx=1, axis=-1, even='avg', method='composite'):
     first_dx = dx
     returnshape = 0
     n = N-1
+    result = 0.0
+    if method not in ['second', 'extended', 'composite']:
+        raise ValueError("If given, method must be either extended or second")
     if x is not None:
         x = asarray(x)
         if len(x.shape) == 1:
-            if method in ['3/8-th', 'extended']:
+            if method in ['second', 'extended']:
                 # Checking whether x is equally spaced or not.
                 h = diff(x, n=1)
-                if np.all(h == h[0]) is False:
-                    raise ValueError("If given, and method used is extended or 3/8-th" 
-                        "x must be equally spaced.")
-                else:
+                if np.all(h[0] == h):
                     dx = h[0]
+                else:
+                    raise ValueError("If given, and method used is extended or second " 
+                        "x must be equally spaced.")
             shapex = ones(nd)
             shapex[axis] = x.shape[0]
             saveshape = x.shape
@@ -411,32 +418,32 @@ def simps(y, x=None, dx=1, axis=-1, even='avg', method='composite'):
             raise ValueError("If given, length of x along axis must be the "
                     "same as y.")
         # checking whether x is equally spaced across all rows.
-        elif y.shape == x.shape and method in ['3/8-th', 'extended']:
+        elif y.shape == x.shape and method in ['second', 'extended']:
             h = diff(x, n=2)
             if np.all(h == 0) is False:
-                    raise ValueError("If given, and method used is extended or 3/8-th" 
+                    raise ValueError("If given, and method used is extended or second " 
                         "x must be equally spaced everywhere.")
 
     # Implementing Simpson's 3/8-th rule.
     
-    if method is '3/8-th' and (n % 3) != 0:
-        raise ValueError("If using Simpson's 3/8-th rule number of samples "
+    if method is 'second' and (n % 3) != 0:
+        raise ValueError("If using Simpson's second rule, number of samples "
             "must be of the form 3*k+1.")
-    elif method is '3/8-th':
+    if method is 'second':
         start = 0
         stop = N-2
         #grouping given samples by slicing.
         all = (slice(None),)*nd
         #groups to be multiplied by 3
         step = 3
-        slice0 = tupleset(all, axis, slice(start+1, stop, step))
-        slice1 = tupleset(all, axis, slice(start+2, stop+1, step))
+        slice0 = tupleset(all, axis, slice(start+1, N-2, step))
+        slice1 = tupleset(all, axis, slice(start+2, N-1, step))
         #groups to be multiplied by 2
-        slice2 = tupleset(all, axis, slice(start+3, stop+2, step))
+        slice2 = tupleset(all, axis, slice(start+3, N-3, step))
         #group of first and last elements whose coeeficient is 1:
-        slice3 = tupleset(all, axis, slice(start, stop+2, n))
+        slice3 = tupleset(all, axis, slice(start, N, n))
         #Applying Simpson's 3-8th formula:
-        #Since diffferent groups could have differnt number of elements, add.reduce function 
+        #Since different groups could have differnt number of elements, add.reduce function 
         #can't be directly applied here, as was applied in composite rule. 
         result0 = add.reduce(3*y[slice0],axis)
         result1 = add.reduce(3*y[slice1],axis)
@@ -445,11 +452,16 @@ def simps(y, x=None, dx=1, axis=-1, even='avg', method='composite'):
         result = dx*3/8.0*(result0 + result1 + result2 + result3)
         
     #Implementating Simpson's extended composite rule.
-    if method is 'extended':
+    elif method is 'extended':
         start = 0
         stop = N
         #grouping given samples with slicing:
         all = (slice(None),)*nd
+        # condition that this can only be applied if either N>8
+        # or N%2 is even.
+        if N%2==1 and N<8:
+            raise ValueError("If method `extended` is used and "
+                "number of samples are less than 8 they must be even.")
         # group of first and last elements with coefficient 17.
         slice0 = tupleset(all, axis, slice(start, stop, n))
         # group with coefficint of elements 59.
@@ -468,10 +480,9 @@ def simps(y, x=None, dx=1, axis=-1, even='avg', method='composite'):
         result = dx/48.0*(result0 + result1 + result2 + result3 + result4)
 
     # Calculating by composite rule. 
-    if method is 'composite':
+    elif method is 'composite':
         if N % 2 == 0:
             val = 0.0
-            result = 0.0
             slice1 = (slice(None),)*nd
             slice2 = (slice(None),)*nd
             if even not in ['avg', 'last', 'first']:
@@ -498,6 +509,10 @@ def simps(y, x=None, dx=1, axis=-1, even='avg', method='composite'):
             result = result + val
         else:
             result = _basic_simps(y,0,N-2,x,dx,axis)
+
+    else:
+        raise ValueError("Method must be one of composite, 3/8-th or extended")
+
     if returnshape:
         x = x.reshape(saveshape)
     return result
@@ -874,7 +889,7 @@ def newton_cotes(rn, equal=0):
     Notes
     -----
     Normally, the Newton-Cotes rules are used on smaller integration
-    regions and a composite rule is used to return the total integral.
+    regions and a composite rule is used to return the ____IlI____llIII_____ integral.
 
     """
     try:
