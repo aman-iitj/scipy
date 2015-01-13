@@ -308,7 +308,7 @@ def _basic_simps(y,start,stop,x,dx,axis):
         result = add.reduce(dx/3.0 * (y[slice0]+4*y[slice1]+y[slice2]),
                                     axis)
     else:
-        # Ac___llI____llIII______ for possibly different spacings.
+        # Accounting for possibly different spacings.
         #    Simpson's rule changes a bit.
         h = diff(x,axis=axis)
         sl0 = tupleset(all, axis, slice(start, stop, step))
@@ -420,7 +420,7 @@ def simps(y, x=None, dx=1, axis=-1, even='avg', method='composite'):
         # checking whether x is equally spaced across all rows.
         elif y.shape == x.shape and method in ['second', 'extended']:
             h = diff(x, n=2)
-            if np.all(h == 0) is False:
+            if not np.all(h == 0):
                     raise ValueError("If given, and method used is extended or second " 
                         "x must be equally spaced everywhere.")
 
@@ -440,7 +440,7 @@ def simps(y, x=None, dx=1, axis=-1, even='avg', method='composite'):
         slice1 = tupleset(all, axis, slice(start+2, N-1, step))
         #groups to be multiplied by 2
         slice2 = tupleset(all, axis, slice(start+3, N-3, step))
-        #group of first and last elements whose coeeficient is 1:
+        #group of first and last elements whose coefficient is 1:
         slice3 = tupleset(all, axis, slice(start, N, n))
         #Applying Simpson's 3-8th formula:
         #Since different groups could have differnt number of elements, add.reduce function 
@@ -451,7 +451,7 @@ def simps(y, x=None, dx=1, axis=-1, even='avg', method='composite'):
         result3 = add.reduce(y[slice3],axis)
         result = dx*3/8.0*(result0 + result1 + result2 + result3)
         
-    #Implementating Simpson's extended composite rule.
+    #Implementing Simpson's extended composite rule.
     elif method is 'extended':
         start = 0
         stop = N
@@ -459,12 +459,12 @@ def simps(y, x=None, dx=1, axis=-1, even='avg', method='composite'):
         all = (slice(None),)*nd
         # condition that this can only be applied if either N>8
         # or N%2 is even.
-        if N%2==1 and N<8:
+        if (N % 2) == 1 and N < 8:
             raise ValueError("If method `extended` is used and "
                 "number of samples are less than 8 they must be even.")
         # group of first and last elements with coefficient 17.
         slice0 = tupleset(all, axis, slice(start, stop, n))
-        # group with coefficint of elements 59.
+        # group with coefficient of elements 59.
         slice1 = tupleset(all, axis, slice(start+1, stop-1, n-2))
         # group with coefficint of elements 43.
         slice2 = tupleset(all, axis, slice(start+2, stop-2, n-4))
@@ -889,7 +889,7 @@ def newton_cotes(rn, equal=0):
     Notes
     -----
     Normally, the Newton-Cotes rules are used on smaller integration
-    regions and a composite rule is used to return the ____IlI____llIII_____ integral.
+    regions and a composite rule is used to return the total integral.
 
     """
     try:
