@@ -308,7 +308,7 @@ def _basic_simps(y,start,stop,x,dx,axis):
         result = add.reduce(dx/3.0 * (y[slice0]+4*y[slice1]+y[slice2]),
                                     axis)
     else:
-        # Accounting for possibly different spacings.
+        # Account for possibly different spacings.
         #    Simpson's rule changes a bit.
         h = diff(x,axis=axis)
         sl0 = tupleset(all, axis, slice(start, stop, step))
