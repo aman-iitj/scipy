@@ -6,7 +6,7 @@ from numpy import cos, sin, pi
 from numpy.testing import TestCase, run_module_suite, assert_equal, \
     assert_almost_equal, assert_allclose, assert_
 
-from scipy.integrate import quadrature, romberg, romb, newton_cotes, cumtrapz, quad
+from scipy.integrate import quadrature, romberg, romb, newton_cotes, cumtrapz, quad, simps
 from scipy.integrate.quadrature import AccuracyWarning
 
 
