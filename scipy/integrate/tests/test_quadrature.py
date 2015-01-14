@@ -56,7 +56,7 @@ class TestQuadrature(TestCase):
     	#test with 2-dimensional input
     	x = [[1, 3, 4, 7, 8], [2, 2.5, 16, 4,7]]
     	val = simps(x)
-    	assert_almost_equal(val, asarray([ 19.0, 22.33333333]), decimal = 6)
+    	assert_almost_equal(val, ([ 19.0, 22.33333333]), decimal = 6)
 
     	#testing for second method:
     	x = [1, 3, 4, 4.5, 5.5, 4.6, 2]
