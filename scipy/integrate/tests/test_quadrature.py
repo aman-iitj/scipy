@@ -49,7 +49,7 @@ class TestQuadrature(TestCase):
     def test_simps(self):
     	#test for composite method
     	#testing for 1-dimensional input
-    	x  = [1, 2, 3, 4]
+    	x  = [1, 2, 3, 4, 5]
     	val = simps(x)
     	assert_equal(val, 12.0)
 
