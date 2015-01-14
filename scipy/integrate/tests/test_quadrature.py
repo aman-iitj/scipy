@@ -47,32 +47,32 @@ class TestQuadrature(TestCase):
         assert_allclose(val, table_val, rtol=1e-10)
     
     def test_simps(self):
-    	#test for composite method
-    	#testing for 1-dimensional input
-    	x  = [1, 2, 3, 4, 5]
-    	val = simps(x)
-    	assert_equal(val, 12.0)
+        #test for composite method
+        #testing for 1-dimensional input
+        x = [1, 2, 3, 4, 5]
+        val = simps(x)
+        assert_equal(val, 12.0)
 
-    	#test with 2-dimensional input
-    	x = [[1, 3, 4, 7, 8], [2, 2.5, 16, 4,7]]
-    	val = simps(x)
-    	assert_almost_equal(val, ([ 19.0, 22.33333333]), decimal = 6)
+        #test with 2-dimensional input
+        x = [[1, 3, 4, 7, 8], [2, 2.5, 16, 4,7]]
+        val = simps(x)
+        assert_almost_equal(val, [19.0, 22.33333333], decimal=6)
 
-    	#testing for second method:
-    	x = [1, 3, 4, 4.5, 5.5, 4.6, 2]
-    	diff = 2
-    	val = simps(x, dx =diff, method = 'second')
-    	assert_almost_equal(val, 47.474999999999, decimal = 6)
+        #testing for second method:
+        x = [1, 3, 4, 4.5, 5.5, 4.6, 2]
+        diff = 2
+        val = simps(x, dx=diff, method='second')
+        assert_almost_equal(val, 47.474999999999, decimal=6)
 
-    	#testing for extended method:
-    	sample = [1, 3, 4, 4.5 , 10, 5.5, 4.6, 2, 3]
-    	diff = 2.5
-    	val = simps(sample, dx = diff, method = 'extended')
-    	#test when equidistant sample are given.
-    	y = [0, 2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20]
-    	ans = simps(sample, x = y, method = 'extended')
-    	assert_equal(ans, 88.6875)
-    	assert_equal(val, 88.6875)
+        #testing for extended method:
+        sample = [1, 3, 4, 4.5 ,10, 5.5, 4.6, 2, 3]
+        diff = 2.5
+        val = simps(sample, dx=diff, method='extended')
+        #test when equidistant sample are given.
+        y = [0, 2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20]
+        ans = simps(sample, x=y, method='extended')
+        assert_equal(ans, 88.6875)
+        assert_equal(val, 88.6875)
 
     def test_romberg(self):
         # Typical function with two extra arguments:
