@@ -67,10 +67,10 @@ class TestQuadrature(TestCase):
     	#testing for extended method:
     	sample = [1, 3, 4, 4.5 , 10, 5.5, 4.6, 2, 3]
     	diff = 2.5
-    	val = simps(x, dx = diff, method = 'extended')
+    	val = simps(sample, dx = diff, method = 'extended')
     	#test when equidistant sample are given.
     	y = [0, 2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20]
-    	ans = simps( sample, x = y)
+    	ans = simps(sample, x = y, method = 'extended')
     	assert_equal(ans, 88.6875)
     	assert_equal(val, 88.6875)
 
