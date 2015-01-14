@@ -62,7 +62,7 @@ class TestQuadrature(TestCase):
     	x = [1, 3, 4, 4.5, 5.5, 4.6, 2]
     	diff = 2
     	val = simps(x, dx =diff, method = 'second')
-    	assert_equal(val, 47.474999999999,decimal = 6)
+    	assert_equal(val, 47.474999999999, decimal = 6)
 
     	#testing for extended method:
     	sample = [1, 3, 4, 4.5 , 10, 5.5, 4.6, 2, 3]
