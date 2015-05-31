@@ -1,10 +1,14 @@
+
+
+
+## Have messed with indentation  at some places. Use space in place of tabs.
+
 ######################################################################
 # Yet to do:
 # 1. Release GIL wherever possible
 # 2. Add cases for exception
 # 3. Add comments
 # 4. Write test cases
-# 5.  
 ######################################################################
 
 cimport cython
@@ -21,7 +25,8 @@ np.import_array()
 
 cdef extern from "numpy/arrayobject.h" nogil:
     ctypedef struct PyArrayIterObject:
-    	pass
+        np.npy_intp *coordinates
+        pass
 
     void PyArray_ITER_NEXT(PyArrayIterObject *it)
     int PyArray_ITER_NOTDONE(PyArrayIterObject *it)
@@ -34,7 +39,7 @@ cdef extern from "numpy/arrayobject.h" nogil:
 
 
 cdef extern from ndi_support:
-	int NI_NormalizeType(int type_num)
+    int NI_NormalizeType(int type_num)
 
 
 
@@ -59,36 +64,36 @@ ctypedef fused data_t:
 ######################################################################
 
 cdef int findObjectsPoint(np.ndarray input[data_t],PyArrayIterObject iti, 
-								np.intp_t max_label, np.intp_t* regions )
+                                np.intp_t max_label, np.intp_t* regions )
 {
-	cdef int ii
-	np.intp_t cc
-	cdef int rank = input -> nd
-	np.intp_t s_index = *(data_t *) input.data -1
-	if s_index >=0  and s_index < max_label:
-		if rank > 0:
-			s_index = 2 * rank
-			if regions[s_index] < 0:
-				for ii in range(rank):
-					cc = iti.coordinates[kk]
-					regions[s_index + ii] = cc
-					regions[s_index + ii + rank] = cc + 1
+    cdef int ii
+    cdef np.intp_t cc
+    cdef int rank = input -> nd
+    np.intp_t s_index = *(data_t *) input.data -1
+    if s_index >=0  and s_index < max_label:
+        if rank > 0:
+            s_index = 2 * rank
+            if regions[s_index] < 0:
+                for ii in range(rank):
+                    cc = iti.coordinates[kk]
+                    regions[s_index + ii] = cc
+                    regions[s_index + ii + rank] = cc + 1
 
-			else:
-				for ii in range(rank):
-					cc = iti.coordinates[kk]
+            else:
+                for ii in range(rank):
+                    cc = iti.coordinates[kk]
 
-					if cc < regions[s_index + ii]:
-						regions[s_index + ii]
-					if cc +1 > regions[s_index + ii + rank]:
-						regions[s_index + ii + rank] = cc + 1
-		else:
-			regions[s_index] = 1
+                    if cc < regions[s_index + ii]:
+                        regions[s_index + ii]
+                    if cc +1 > regions[s_index + ii + rank]:
+                        regions[s_index + ii + rank] = cc + 1
+        else:
+            regions[s_index] = 1
 }
 
 
 ######################################################################
-# Implementaion of find_Objects function: 
+# Implementaion of find_Objects function:-
 ######################################################################
 
 
@@ -97,34 +102,36 @@ cpdef int _NI_FindObjects(np.ndarray input, np.intp_t max_label,
 {
 ##### Assertions left
 
-	cdef:
-		int kk, ii
-    	np.intp_t size, jj
+    cdef:
+        int kk, ii
+        np.intp_t size, jj
 
 # Array Iterator defining and Initialization:
 
     cdef:
-	np.flatiter _iti, _ito
-    PyArrayIterObject *iti
-    PyArrayIterObject *ito
+        np.flatiter _iti, _ito
+        PyArrayIterObject *iti
+        PyArrayIterObject *ito
 
-	_iti = np.PyArray_IterNew(input, &axis)
+    _iti = np.PyArray_IterNew(input, &axis)
 
-	iti = <PyArrayIterObject *> _iti
-    	
+    iti = <PyArrayIterObject *> _iti
+        
     size = 1
 
     #This line should be implemented using factors...
     for ii in range(input->nd):
-    	size *= input->dimensions[kk];
+        size *= input->dimensions[kk];
 
 #Iteration over all points:
-	for ii in range(size):
-		input->descr->type_num = NI_NormalizeType(input->descr->type_num)
-		findObjectsPoint(input, iti)
+    for ii in range(size):
+        input->descr->type_num = NI_NormalizeType(input->descr->type_num)
 
-		PyArray_ITER_NEXT(iti)
+#Function Implementaton cross check
+        findObjectsPoint(input, iti, max_label, regions)
 
-	return 1
+        PyArray_ITER_NEXT(iti)
+
+    return 1
 
 }

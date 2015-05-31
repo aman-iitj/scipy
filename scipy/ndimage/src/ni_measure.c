@@ -55,7 +55,7 @@ case t ## _type:                                                  \
                     npy_intp _cc = _ii.coordinates[_kk];            \
                     _regions[_sindex + _kk] = _cc;                          \
                     _regions[_sindex + _kk + _rank] = _cc + 1;              \
-                }                                                            \
+                }                                                         \
             } else {                                                    \
                 for(_kk = 0; _kk < _rank; _kk++) {                        \
                     npy_intp _cc = _ii.coordinates[_kk];            \

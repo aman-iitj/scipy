@@ -1,3 +1,9 @@
+# This file is mainly for declaring supportive functions for the module
+
+# Discuss what declaration are to be stored in these files since everything
+# that is currently declared here, needs to be declared again in measurement.pyx
+# except function NI_NormalizeType()
+
 cimport cython
 
 import numpy as np
@@ -7,6 +13,7 @@ np.import_array()
 
 cdef extern from "numpy/arrayobject.h" nogil:
     ctypedef struct PyArrayIterObject:
+    	np.npy_intp *coordinates
     	pass
 
     void PyArray_ITER_NEXT(PyArrayIterObject *it)
