@@ -39,18 +39,18 @@ cdef extern from "numpy/arrayobject.h" nogil:
 
 
 #cdef extern from ndi_support:
-#    int NI_NormalizeType(int type_num)  
-cdef inline int NI_NormalizeType(int type_num)
-{
-    if NPY_SIZEOF_INT == NPY_SIZEOF_LONG:
-        if (type_num == NPY_INT):
-            type_num = NPY_LONG
-        if (type_num == NPY_UINT):
-            type_num = NPY_ULONG
-        
-    return type_num;
-}
+#    int NI_NormalizeType(int type_num)
 
+#cdef inline int NI_NormalizeType(int type_num)
+#{
+#   if NPY_SIZEOF_INT == NPY_SIZEOF_LONG:
+#        if (type_num == NPY_INT):
+#           type_num = NPY_LONG
+#        if (type_num == NPY_UINT):
+#            type_num = NPY_ULONG
+#        
+#    return type_num;
+#}
 
 
 
@@ -75,12 +75,11 @@ ctypedef fused data_t:
 ######################################################################
 
 cdef int findObjectsPoint(np.ndarray input[data_t],PyArrayIterObject iti, 
-                                np.intp_t max_label, np.intp_t* regions )
-{
+                                np.intp_t max_label, np.intp_t* regions):
     cdef int ii
     cdef np.intp_t cc
-    cdef int rank = input -> nd
-    np.intp_t s_index = *(data_t *) input.data -1
+    cdef int rank = input.nd
+    cdef np.intp_t s_index = (<data_t *> input)[0].data) -1
     if s_index >=0  and s_index < max_label:
         if rank > 0:
             s_index = 2 * rank
@@ -100,7 +99,6 @@ cdef int findObjectsPoint(np.ndarray input[data_t],PyArrayIterObject iti,
                         regions[s_index + ii + rank] = cc + 1
         else:
             regions[s_index] = 1
-}
 
 
 ######################################################################
@@ -109,15 +107,13 @@ cdef int findObjectsPoint(np.ndarray input[data_t],PyArrayIterObject iti,
 
 
 cpdef int _NI_FindObjects(np.ndarray input, np.intp_t max_label,
-                                     np.intp_t* regions)
-{
-##### Assertions left
-
+                                     np.intp_t* regions):
+    ##### Assertions left
     cdef:
         int kk, ii
         np.intp_t size, jj
 
-# Array Iterator defining and Initialization:
+    # Array Iterator defining and Initialization:
 
     cdef:
         np.flatiter _iti, _ito
@@ -131,18 +127,16 @@ cpdef int _NI_FindObjects(np.ndarray input, np.intp_t max_label,
     size = 1
 
     #This line should be implemented using factors...
-    for ii in range(input->nd):
-        size *= input->dimensions[kk];
+    for ii in range(input.nd):
+        size *= input.dimensions[kk];
 
-#Iteration over all points:
-    for ii in range(size):
-        input->descr->type_num = NI_NormalizeType(input->descr->type_num)
-
-#Function Implementaton cross check
+    #Iteration over all points:
+    #    for ii in range(size):
+    #        input.descr.type_num = NI_NormalizeType(input.descr.type_num)
+    
+    #Function Implementaton cross check
         findObjectsPoint(input, iti, max_label, regions)
 
         PyArray_ITER_NEXT(iti)
 
     return 1
-
-}
