@@ -4,8 +4,9 @@
 # 2. Add cases for exception
 # 3. Add comments
 # 4. Write test cases
+# 5. Testing
 ######################################################################
-
+# 
 cimport cython
 from cython cimport sizeof
 import numpy as np
@@ -23,6 +24,9 @@ cdef extern from "numpy/arrayobject.h" nogil:
         np.npy_intp *dims_m1
         char *dataptr
 
+    # ctypedef struct PyArrayObject:
+    #     PyArray_Descr *descr;
+
     void PyArray_ITER_NEXT(PyArrayIterObject *it)
     int PyArray_ITER_NOTDONE(PyArrayIterObject *it)
     void PyArray_ITER_RESET(PyArrayIterObject *it)
@@ -36,17 +40,14 @@ cdef extern from "numpy/arrayobject.h" nogil:
 #cdef extern from ndi_support:
 #    int NI_NormalizeType(int type_num)
 
-#cdef inline int NI_NormalizeType(int type_num)
-#{
-#   if NPY_SIZEOF_INT == NPY_SIZEOF_LONG:
-#        if (type_num == NPY_INT):
-#           type_num = NPY_LONG
-#        if (type_num == NPY_UINT):
-#            type_num = NPY_ULONG
-#        
-#    return type_num;
-#}
-#
+# cdef inline int NI_NormalizeType(int type_num)
+    # if NPY_SIZEOF_INT == NPY_SIZEOF_LONG:
+        # if (type_num == NPY_INT):
+            # type_num = NPY_LONG
+        # if (type_num == NPY_UINT):
+            # type_num = NPY_ULONG
+    # return type_num
+
 
 ######################################################################
 # Use Cython's type templates for type specialization
@@ -73,7 +74,8 @@ cdef int findObjectsPoint(PyArrayIterObject *iti,
                                 np.intp_t max_label, np.intp_t* regions, int rank):
     cdef int kk =0
     cdef np.intp_t cc
-    cdef np.intp_t s_index =  (<np.intp_t  *> iti.dataptr)[0]-1
+    cdef np.intp_t s_index =  (<np.intp_t *> iti.dataptr)[0]-1
+    print s_index
     if s_index >=0  and s_index < max_label:
         if rank > 0:
             s_index *= 2 * rank
@@ -103,13 +105,14 @@ cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
     ##### Assertions left
     cdef:
         int ii, rank, size_regions, *regions
-        np.intp_t size, jj
+        int start, end
+        np.intp_t size, jj, idx
 
         # Array Iterator defining and Initialization:
         np.flatiter _iti
         PyArrayIterObject *iti
 
-    # Array Declaration for reurning:
+    # Array Declaration for returning values:
     rank = input.ndim
     if max_label < 0:
         max_label = 0
@@ -136,20 +139,36 @@ cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
     _iti = np.PyArray_IterNew(input)
     iti = <PyArrayIterObject *> _iti
 
-    size =1
+    size = 1
     for ii in range(rank):
         size *= (iti.dims_m1[ii] +1)
 
     #Iteration over all points:
     for ii in range(size):
-        # input.descr.type_num = NI_NormalizeType(input.descr.type_num)
+        # NI_NormalizeType((<PyArrayObject *> input).descr.type_num)
         # Function Implementaton cross check
         findObjectsPoint(iti, max_label, regions, rank)
         PyArray_ITER_NEXT(iti)
 
     print rank
-
+    
+    result = []
     for ii in range(size_regions):
         print regions[ii]
 
-    return 1
+    for ii in range(max_label):
+        if rank > 0:
+            idx = 2 * rank * ii
+
+        else:
+            idx = ii
+
+        slc = []
+        for jj in range(rank):
+            start = regions[idx + jj]
+            end = regions[idx + jj + rank]
+
+            slc.append(slice(start, end))
+        result.append(slc)
+
+    return result

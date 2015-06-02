@@ -128,6 +128,8 @@ int NI_FindObjects(PyArrayObject* input, npy_intp max_label,
         }
         NI_ITERATOR_NEXT(ii, pi);
     }
+    int i;
+    for(i= 0; i< 8;i++) printf("%d\n", regions[i]);
  exit:
     NPY_END_THREADS;
     return PyErr_Occurred() ? 0 : 1;
