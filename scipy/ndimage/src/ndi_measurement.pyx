@@ -1,8 +1,3 @@
-
-
-
-## Have messed with indentation  at some places. Use space in place of tabs.
-
 ######################################################################
 # Yet to do:
 # 1. Release GIL wherever possible
@@ -12,21 +7,21 @@
 ######################################################################
 
 cimport cython
-
+from cython cimport sizeof
 import numpy as np
 cimport numpy as np
-cimport ndi_support
+from libc.stdlib cimport malloc
 
 np.import_array()
 
-######################################################################
-# Declaring Array Iterators and Macros for Iteration 
-######################################################################
+cdef extern from *:
+   ctypedef int Py_intptr_t
 
 cdef extern from "numpy/arrayobject.h" nogil:
     ctypedef struct PyArrayIterObject:
         np.npy_intp *coordinates
-        pass
+        np.npy_intp *dims_m1
+        char *dataptr
 
     void PyArray_ITER_NEXT(PyArrayIterObject *it)
     int PyArray_ITER_NOTDONE(PyArrayIterObject *it)
@@ -51,12 +46,12 @@ cdef extern from "numpy/arrayobject.h" nogil:
 #        
 #    return type_num;
 #}
-
-
+#
 
 ######################################################################
 # Use Cython's type templates for type specialization
 ######################################################################
+
 ctypedef fused data_t:
     np.int8_t
     np.int16_t
@@ -74,29 +69,27 @@ ctypedef fused data_t:
 # Update Regions According to Input Data Type
 ######################################################################
 
-cdef int findObjectsPoint(np.ndarray input[data_t],PyArrayIterObject iti, 
-                                np.intp_t max_label, np.intp_t* regions):
-    cdef int ii
+cdef int findObjectsPoint(PyArrayIterObject *iti, 
+                                np.intp_t max_label, np.intp_t* regions, int rank):
+    cdef int kk =0
     cdef np.intp_t cc
-    cdef int rank = input.nd
-    cdef np.intp_t s_index = (<data_t *> input)[0].data) -1
+    cdef np.intp_t s_index =  (<np.intp_t  *> iti.dataptr)[0]-1
     if s_index >=0  and s_index < max_label:
         if rank > 0:
-            s_index = 2 * rank
+            s_index *= 2 * rank
             if regions[s_index] < 0:
-                for ii in range(rank):
+                for kk in range(rank):
                     cc = iti.coordinates[kk]
-                    regions[s_index + ii] = cc
-                    regions[s_index + ii + rank] = cc + 1
+                    regions[s_index + kk] = cc
+                    regions[s_index + kk + rank] = cc + 1
 
             else:
-                for ii in range(rank):
+                for kk in range(rank):
                     cc = iti.coordinates[kk]
-
-                    if cc < regions[s_index + ii]:
-                        regions[s_index + ii]
-                    if cc +1 > regions[s_index + ii + rank]:
-                        regions[s_index + ii + rank] = cc + 1
+                    if cc < regions[s_index + kk]:
+                        regions[s_index + kk] = cc
+                    if cc +1 > regions[s_index + kk + rank]:
+                        regions[s_index + kk + rank] = cc + 1
         else:
             regions[s_index] = 1
 
@@ -106,37 +99,57 @@ cdef int findObjectsPoint(np.ndarray input[data_t],PyArrayIterObject iti,
 ######################################################################
 
 
-cpdef int _NI_FindObjects(np.ndarray input, np.intp_t max_label,
-                                     np.intp_t* regions):
+cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
     ##### Assertions left
     cdef:
-        int kk, ii
+        int ii, rank, size_regions, *regions
         np.intp_t size, jj
 
-    # Array Iterator defining and Initialization:
-
-    cdef:
-        np.flatiter _iti, _ito
+        # Array Iterator defining and Initialization:
+        np.flatiter _iti
         PyArrayIterObject *iti
-        PyArrayIterObject *ito
 
-    _iti = np.PyArray_IterNew(input, &axis)
+    # Array Declaration for reurning:
+    rank = input.ndim
+    if max_label < 0:
+        max_label = 0
+    
+    # Declaring output array
+    size_regions = 0
+    if max_label >0:
+        if rank > 0:
+            size_regions = 2 * max_label * rank
 
+        else:
+            size_regions = max_label
+            # regions = <np.intp_t *> malloc(max_label * sizeof(np.intp_t)) 
+        regions = <np.intp_t *> malloc(size_regions * sizeof(np.intp_t))
+        # error in allocation
+    else:
+        regions = NULL
+
+    if rank > 0:
+        for jj in range(size_regions):
+            regions[jj] = -1
+
+
+    _iti = np.PyArray_IterNew(input)
     iti = <PyArrayIterObject *> _iti
-        
-    size = 1
 
-    #This line should be implemented using factors...
-    for ii in range(input.nd):
-        size *= input.dimensions[kk];
+    size =1
+    for ii in range(rank):
+        size *= (iti.dims_m1[ii] +1)
 
     #Iteration over all points:
-    #    for ii in range(size):
-    #        input.descr.type_num = NI_NormalizeType(input.descr.type_num)
-    
-    #Function Implementaton cross check
-        findObjectsPoint(input, iti, max_label, regions)
-
+    for ii in range(size):
+        # input.descr.type_num = NI_NormalizeType(input.descr.type_num)
+        # Function Implementaton cross check
+        findObjectsPoint(iti, max_label, regions, rank)
         PyArray_ITER_NEXT(iti)
+
+    print rank
+
+    for ii in range(size_regions):
+        print regions[ii]
 
     return 1
