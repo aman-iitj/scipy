@@ -75,7 +75,6 @@ cdef int findObjectsPoint(PyArrayIterObject *iti,
     cdef int kk =0
     cdef np.intp_t cc
     cdef np.intp_t s_index =  (<np.intp_t *> iti.dataptr)[0]-1
-    print s_index
     if s_index >=0  and s_index < max_label:
         if rank > 0:
             s_index *= 2 * rank
@@ -150,11 +149,8 @@ cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
         findObjectsPoint(iti, max_label, regions, rank)
         PyArray_ITER_NEXT(iti)
 
-    print rank
     
     result = []
-    for ii in range(size_regions):
-        print regions[ii]
 
     for ii in range(max_label):
         if rank > 0:
