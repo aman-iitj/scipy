@@ -25,8 +25,15 @@ cdef extern from "numpy/arrayobject.h" nogil:
         char *dataptr
         np.npy_bool contiguous
 
-    # ctypedef struct PyArrayObject:
-    #     PyArray_Descr *descr;
+cdef extern from "numpy/numpyconfig.h":
+    cdef: 
+        int NPY_SIZEOF_LONG
+        int NPY_SIZEOF_INT
+        int NPY_INT
+        int NPY_LONG
+        int NPY_ULONG
+        int NPY_UINT
+
 
     void PyArray_ITER_NEXT(PyArrayIterObject *it)
     int PyArray_ITER_NOTDONE(PyArrayIterObject *it)
@@ -41,13 +48,13 @@ cdef extern from "numpy/arrayobject.h" nogil:
 #cdef extern from ndi_support:
 #    int NI_NormalizeType(int type_num)
 
-# cdef inline int NI_NormalizeType(int type_num)
-    # if NPY_SIZEOF_INT == NPY_SIZEOF_LONG:
-        # if (type_num == NPY_INT):
-            # type_num = NPY_LONG
-        # if (type_num == NPY_UINT):
-            # type_num = NPY_ULONG
-    # return type_num
+cdef inline int NI_NormalizeType(int type_num):
+    if NPY_SIZEOF_LONG == NPY_SIZEOF_INT:
+        if (type_num == NPY_INT):
+            type_num = NPY_LONG
+        if (type_num == NPY_UINT):
+            type_num = NPY_ULONG
+    return type_num
 
 
 ######################################################################
@@ -146,7 +153,7 @@ cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
 
     #Iteration over all points:
     while PyArray_ITER_NOTDONE(iti):
-        # NI_NormalizeType((<PyArrayObject *> input).descr.type_num)
+        NI_NormalizeType((<PyArrayObject *> input).descr.type_num)
         # Function Implementaton cross check
         findObjectsPoint(iti, max_label, regions, rank)
         PyArray_ITER_NEXT(iti)
@@ -171,4 +178,3 @@ cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
 
     return result
 
-    
