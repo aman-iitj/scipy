@@ -23,6 +23,7 @@ cdef extern from "numpy/arrayobject.h" nogil:
         np.npy_intp *coordinates
         np.npy_intp *dims_m1
         char *dataptr
+        np.npy_bool contiguous
 
     # ctypedef struct PyArrayObject:
     #     PyArray_Descr *descr;
@@ -94,6 +95,8 @@ cdef int findObjectsPoint(PyArrayIterObject *iti,
         else:
             regions[s_index] = 1
 
+    return 1
+
 
 ######################################################################
 # Implementaion of find_Objects function:-
@@ -103,9 +106,9 @@ cdef int findObjectsPoint(PyArrayIterObject *iti,
 cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
     ##### Assertions left
     cdef:
-        int ii, rank, size_regions, *regions
+        int ii, rank, size_regions
         int start, end
-        np.intp_t size, jj, idx
+        np.intp_t jj, idx, *regions
 
         # Array Iterator defining and Initialization:
         np.flatiter _iti
@@ -138,12 +141,11 @@ cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
     _iti = np.PyArray_IterNew(input)
     iti = <PyArrayIterObject *> _iti
 
-    size = 1
-    for ii in range(rank):
-        size *= (iti.dims_m1[ii] +1)
+    # if iterator is contiguos, PyArray_ITER_NEXT will treat it as 1D Array
+    iti.contiguous = 0
 
     #Iteration over all points:
-    for ii in range(size):
+    while PyArray_ITER_NOTDONE(iti):
         # NI_NormalizeType((<PyArrayObject *> input).descr.type_num)
         # Function Implementaton cross check
         findObjectsPoint(iti, max_label, regions, rank)
@@ -159,12 +161,14 @@ cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
         else:
             idx = ii
 
-        slc = []
+        slc = ()
         for jj in range(rank):
             start = regions[idx + jj]
             end = regions[idx + jj + rank]
 
-            slc.append(slice(start, end))
+            slc += (slice(start, end),)
         result.append(slc)
 
     return result
+
+    
