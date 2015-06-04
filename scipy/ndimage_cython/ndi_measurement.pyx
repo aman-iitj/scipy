@@ -24,6 +24,13 @@ cdef extern from "numpy/arrayobject.h" nogil:
         np.npy_intp *dims_m1
         char *dataptr
         np.npy_bool contiguous
+    
+    ctypedef struct PyArray_Descr:
+        int type_num
+
+    ctypedef struct PyArrayObject:
+        PyArray_Descr *descr
+        int nd
 
 cdef extern from "numpy/numpyconfig.h":
     cdef: 
@@ -153,12 +160,11 @@ cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
 
     #Iteration over all points:
     while PyArray_ITER_NOTDONE(iti):
-        NI_NormalizeType((<PyArrayObject *> input).descr.type_num)
+        NI_NormalizeType((<PyArrayObject *> input).descr.type_num)    
         # Function Implementaton cross check
         findObjectsPoint(iti, max_label, regions, rank)
         PyArray_ITER_NEXT(iti)
 
-    
     result = []
 
     for ii in range(max_label):
@@ -168,13 +174,17 @@ cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
         else:
             idx = ii
 
-        slc = ()
-        for jj in range(rank):
-            start = regions[idx + jj]
-            end = regions[idx + jj + rank]
+        if regions[idx] >= 0:
+            slc = ()
+            for jj in range(rank):
+                start = regions[idx + jj]
+                end = regions[idx + jj + rank]
 
-            slc += (slice(start, end),)
-        result.append(slc)
+                slc += (slice(start, end),)
+            result.append(slc)
 
-    return result
+        else:
+            result.append(NI_NormalizeType)
+
+        return result
 
