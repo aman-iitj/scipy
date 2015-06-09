@@ -10,12 +10,13 @@ cimport cython
 from cython cimport sizeof
 import numpy as np
 cimport numpy as np
-from libc.stdlib cimport malloc
 
 np.import_array()
 
 cdef extern from *:
    ctypedef int Py_intptr_t
+
+ctypedef void (*PyArray_CopySwapFunc)(void *, void *, int, void *)
 
 cdef extern from "numpy/arrayobject.h" nogil:
     ctypedef struct PyArrayIterObject:
@@ -27,23 +28,22 @@ cdef extern from "numpy/arrayobject.h" nogil:
         PyArray_CopySwapFunc *copyswap
     
     ctypedef struct PyArray_Descr:
-        int type_num
         PyArray_ArrFuncs *f
 
     ctypedef struct PyArrayObject:
         PyArray_Descr *descr
         int nd
 
-    void copyswap(void *dest, void *src, int swap, void *arr)
+    # void copyswap(void *dest, void *src, int swap, void *arr)
 
-    void PyArray_ITER_NEXT(PyArrayIterObject *it)
-    int PyArray_ITER_NOTDONE(PyArrayIterObject *it)
-    void PyArray_ITER_RESET(PyArrayIterObject *it)
+    # void PyArray_ITER_NEXT(PyArrayIterObject *it)
+    # int PyArray_ITER_NOTDONE(PyArrayIterObject *it)
     void *PyArray_ITER_DATA(PyArrayIterObject *it)
+    PyArray_Descr *PyArray_DESCR(PyArrayObject* arr)
+    # int PyArray_ISBYTESWAPPED(PyArrayObject* arr)
 
     void *PyDataMem_NEW(size_t)
     void PyDataMem_FREE(void *)
-    int PyArray_ISBYTESWAPPED(arr)
 
 
 ######################################################################
@@ -74,21 +74,19 @@ def get_funcs(np.ndarray[data_t] input):
 # Dereferncing pointer and Dealing with Misalligned pointers
 ######################################################################
 
-ctypedef data_t (* func2_p)(data_t, PyArrayIterObject, np.ndarray)
+ctypedef data_t (* func2_p)(data_t *, np.flatiter, np.ndarray)
 
 # change PyarrayIterObject to np.flatiter
-cdef data_t get_from_iter(data_t *data, PyArrayIterObject *iter, np.ndarray arr):
-    return (<data_t *>PyArray_ITER_DATA(iter))[0]
+cdef data_t get_from_iter(data_t *data, np.flatiter iter, np.ndarray arr):
+    return (<data_t *>np.PyArray_ITER_DATA(iter))[0]
 
 # change PyarrayIterObject to np.flatiter
-cdef data_t get_misaligned_from_iter(data_t *data, PyArrayIterObject *iter, np.ndarray arr):
+cdef data_t get_misaligned_from_iter(data_t *data, np.flatiter iter, np.ndarray arr):
 
-    cdef data_t ret;
-    cdef PyArray_CopySwapFunc *copyswap
+    cdef data_t ret = 0
+    cdef PyArray_CopySwapFunc copyswap = <PyArray_CopySwapFunc> <void *> PyArray_DESCR(<PyArrayObject*> arr).f.copyswap
 
-    copyswap = PyArray_DESCR(arr).f.copyswap
-
-    copyswap(&ret, PyArray_ITER_DATA(iter), PyArray_ISBYTESWAPPED(arr), arr)
+    copyswap(&ret, np.PyArray_ITER_DATA(iter), 1,<void *> arr)
 
     return ret
 
@@ -102,10 +100,18 @@ cdef int findObjectsPoint(data_t *data, np.flatiter _iti, PyArrayIterObject *iti
                                 int rank):
     cdef int kk =0
     cdef np.intp_t cc
+    
+    cdef func2_p deref_p 
+    # deref_p = get_misaligned_from_iter if PyArray_ISBYTESWAPPED(<PyArrayObject*> input) == True else deref_p = get_from_iter
+    if np.PyArray_ISBYTESWAPPED(input) == True:
+        deref_p = get_misaligned_from_iter
+
+    else:
+        deref_p = get_from_iter
 
     # only integer or boolean values are allowed, since s_index is being used in indexing
     # cdef np.uintp_t s_index =  <np.uintp_t> ((<data_t *> iti.dataptr)[0])-1
-    cdef np.uintp_t s_index =  <np.uintp_t> deref_p(iti.dataptr, iti, input) - 1
+    cdef np.uintp_t s_index = deref_p(data, _iti, input) - 1
 
     if s_index >=0  and s_index < max_label:
         if rank > 0:
@@ -138,8 +144,7 @@ cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
     ##### Assertions left
     funcs = get_funcs(input.take([0]))
 
-    cdef:
-            func2_p deref_p 
+    # cdef func2_p deref_p 
 
     cdef:
         int ii, rank, size_regions
@@ -155,9 +160,10 @@ cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
 
     # Array Declaration for returning values:
 
-    deref_p = get_misaligned_from_iter if PyArray_ISBYTESWAPPED(input) == True else deref_p = get_from_iter
+    # deref_p = get_misaligned_from_iter if PyArray_ISBYTESWAPPED(input) == True else deref_p = get_from_iter
 
     rank = input.ndim
+    
     if max_label < 0:
         max_label = 0
     
@@ -188,10 +194,10 @@ cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
     iti.contiguous = 0
 
     #Iteration over all points:
-    while PyArray_ITER_NOTDONE(iti):
+    while np.PyArray_ITER_NOTDONE(_iti):
         # Function Implementaton cross check
-        findObjectsPoint(PyArray_ITER_DATA(iti), _iti, iti, input, max_label, regions, rank)
-        PyArray_ITER_NEXT(iti)
+        findObjectsPoint(np.PyArray_ITER_DATA(_iti), _iti, iti, input, max_label, regions, rank)
+        np.PyArray_ITER_NEXT(_iti)
 
     result = []
 
@@ -207,6 +213,7 @@ cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
             for jj in range(rank):
                 start = regions[idx + jj]
                 end = regions[idx + jj + rank]
+                # print start, end, 'Start end'
 
                 slc += (slice(start, end),)
             result.append(slc)
