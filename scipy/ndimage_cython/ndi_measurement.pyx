@@ -131,7 +131,6 @@ cdef int findObjectsPoint(data_t *data, np.flatiter _iti, PyArrayIterObject *iti
 
 
 cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
-    ##### Assertions left
     funcs = get_funcs(input.take([0]))
     
     if max_label < 1:
