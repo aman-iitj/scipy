@@ -1,9 +1,5 @@
 ######################################################################
-# Yet to do:
-# 1. Release GIL wherever possible
-# 2. Add cases for exception
-# 3. Add comments
-# 4. Write test cases
+# Cython version of ndimage.find_objects() function.
 ######################################################################
 
 cimport cython
@@ -34,13 +30,8 @@ cdef extern from "numpy/arrayobject.h" nogil:
         PyArray_Descr *descr
         int nd
 
-    # void copyswap(void *dest, void *src, int swap, void *arr)
-
-    # void PyArray_ITER_NEXT(PyArrayIterObject *it)
-    # int PyArray_ITER_NOTDONE(PyArrayIterObject *it)
     void *PyArray_ITER_DATA(PyArrayIterObject *it)
     PyArray_Descr *PyArray_DESCR(PyArrayObject* arr)
-    # int PyArray_ISBYTESWAPPED(PyArrayObject* arr)
 
     void *PyDataMem_NEW(size_t)
     void PyDataMem_FREE(void *)
@@ -50,6 +41,7 @@ cdef extern from "numpy/arrayobject.h" nogil:
 # Use Cython's type templates for type specialization
 ######################################################################
 
+# Only integer values are allowed.
 ctypedef fused data_t:
     np.int8_t
     np.int16_t
@@ -57,6 +49,8 @@ ctypedef fused data_t:
     np.int64_t
     np.uint8_t
     np.uint16_t
+    np.uint32_t
+    np.uint_64_t
 
 #####################################################################
 # Function Specializers and asociate function for using fused type
@@ -76,11 +70,9 @@ def get_funcs(np.ndarray[data_t] input):
 
 ctypedef data_t (* func2_p)(data_t *, np.flatiter, np.ndarray)
 
-# change PyarrayIterObject to np.flatiter
 cdef data_t get_from_iter(data_t *data, np.flatiter iter, np.ndarray arr):
     return (<data_t *>np.PyArray_ITER_DATA(iter))[0]
 
-# change PyarrayIterObject to np.flatiter
 cdef data_t get_misaligned_from_iter(data_t *data, np.flatiter iter, np.ndarray arr):
 
     cdef data_t ret = 0
@@ -101,8 +93,7 @@ cdef int findObjectsPoint(data_t *data, np.flatiter _iti, PyArrayIterObject *iti
     cdef int kk =0
     cdef np.intp_t cc
     
-    cdef func2_p deref_p 
-    # deref_p = get_misaligned_from_iter if PyArray_ISBYTESWAPPED(<PyArrayObject*> input) == True else deref_p = get_from_iter
+    cdef func2_p deref_p
     if np.PyArray_ISBYTESWAPPED(input) == True:
         deref_p = get_misaligned_from_iter
 
@@ -110,7 +101,6 @@ cdef int findObjectsPoint(data_t *data, np.flatiter _iti, PyArrayIterObject *iti
         deref_p = get_from_iter
 
     # only integer or boolean values are allowed, since s_index is being used in indexing
-    # cdef np.uintp_t s_index =  <np.uintp_t> ((<data_t *> iti.dataptr)[0])-1
     cdef np.uintp_t s_index = deref_p(data, _iti, input) - 1
 
     if s_index >=0  and s_index < max_label:
@@ -143,7 +133,9 @@ cdef int findObjectsPoint(data_t *data, np.flatiter _iti, PyArrayIterObject *iti
 cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
     ##### Assertions left
     funcs = get_funcs(input.take([0]))
-
+    
+    if max_label < 1:
+        max_label = input.max()
     # cdef func2_p deref_p 
 
     cdef:
@@ -158,10 +150,6 @@ cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
     cdef:
         func_p findObjectsPoint = <func_p> <void *> <Py_intptr_t> funcs
 
-    # Array Declaration for returning values:
-
-    # deref_p = get_misaligned_from_iter if PyArray_ISBYTESWAPPED(input) == True else deref_p = get_from_iter
-
     rank = input.ndim
     
     if max_label < 0:
@@ -175,9 +163,8 @@ cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
 
         else:
             size_regions = max_label
-
+        
         regions = <np.intp_t *> PyDataMem_NEW(size_regions * sizeof(np.intp_t))
-        # error in allocation
 
     else:
         regions = NULL
@@ -195,8 +182,8 @@ cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
 
     #Iteration over all points:
     while np.PyArray_ITER_NOTDONE(_iti):
-        # Function Implementaton cross check
-        findObjectsPoint(np.PyArray_ITER_DATA(_iti), _iti, iti, input, max_label, regions, rank)
+        findObjectsPoint(np.PyArray_ITER_DATA(_iti), _iti, iti, input, 
+                        max_label, regions, rank)
         np.PyArray_ITER_NEXT(_iti)
 
     result = []
@@ -213,7 +200,6 @@ cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
             for jj in range(rank):
                 start = regions[idx + jj]
                 end = regions[idx + jj + rank]
-                # print start, end, 'Start end'
 
                 slc += (slice(start, end),)
             result.append(slc)
