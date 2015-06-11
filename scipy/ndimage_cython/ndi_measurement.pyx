@@ -38,7 +38,7 @@ cdef extern from "numpy/arrayobject.h" nogil:
 
 
 ######################################################################
-# Use Cython's type templates for type specialization
+# Use Cython's type templates for type speecialization
 ######################################################################
 
 # Only integer values are allowed.
@@ -139,8 +139,8 @@ cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
 
     cdef:
         int ii, rank, size_regions
-        int start, end
-        np.intp_t jj, idx, *regions
+        int start, jj, idx, end
+        np.intp_t *regions
 
         # Array Iterator defining and Initialization:
         np.flatiter _iti
@@ -209,3 +209,78 @@ cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
     PyDataMem_FREE(regions)
 
     return result
+
+
+
+##############################################################################
+##############################################################################
+#       NI_CentreOfMass
+
+cpdef NI_CentreOfMass(np.ndarray input, np.ndarray labels,
+                      np.intp_t min_label, np.intp_t max_label, npy_intp *indices,
+                      np.intp_t n_results, np.float_t *center_of_mass):
+    cdef:
+        np.flatiter _ii, _mi
+        np.PyArrayIterObject ii, mi
+        np.uintp_t jj, kk, qq
+        np.intp_t size, rank, idx, label, doit
+        double *sum = NULL, val
+
+
+# Initialization of values:
+        idx = 0
+        label = 1
+        doit = 1
+
+# Initialization of iterator
+        _ii = PyArray_IterNew(_ii)
+        _mi = PyArray_IterNew(_mi)
+
+        ii = <PyArrayIterObject *> _ii
+        _mi = <PyArrayIterObject *> _mi
+
+        size = input.size
+        rank = input.ndimage
+
+        sum = <double *>PyDataMem_NEW(n_results * sizeof(double))
+        #error if memory Not assigned
+
+        for jj in range(n_results):
+            sum[jj] = 0.0
+            for kk in range(rank):
+                center_of_mass[jj * rank + kk] = 0.0
+
+        # Iterate Over Array
+        for jj in size:
+            NI_GET_LABEL:
+            if min_label >=0 :
+                if label >= min_label and label <= max_label:
+                    idx = indices[label - min_label]
+                    doit = idx >= 0
+
+                else:
+                    doit = 0
+
+            else doit = label != 0
+
+            if doit is True:
+                val = NI_GET_VALUE()
+                sum[idx] += val
+                for kk in range rank:
+                    center_of_mass[idx * rank + kk] += val * ii.coordinates[kk]
+
+            if label is True:
+                PyArray_ITER_NEXT(_ii)
+                PyArray_ITER_NEXT(_mi)
+
+            else:
+                PyArray_ITER_NEXT(_ii)
+
+        for jj in range(n_results):
+            for kk in range(rank):
+                center_of_mass[jj * rank + kk] /= sum[jj]
+
+        PyDataMem_FREE(sum)
+
+
+#EOF
