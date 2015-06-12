@@ -216,25 +216,82 @@ cpdef NI_FindObjects(np.ndarray input, np.intp_t max_label):
 ##############################################################################
 #       NI_CentreOfMass
 
+# Points to check:
+#  dereferencing again
+#  NI get value function
+##############################################################################
+# Typedefs and declarations related to Implementation of fused type
+##############################################################################
+
+ctypedef fused data_com:
+    np.int8_t
+    np.int16_t
+    np.int32_t
+    np.int64_t
+    np.uint8_t
+    np.uint16_t
+    np.uint32_t
+    np.uint64_t
+    np.float32_t
+    np.float64_t
+
+ctypedef void (*funcP_com)(void *data, np.flatiter _ii, np.intp_t *label, np.ndarray labels) nogil
+
+def getFuncs_com(np.ndarray[data_t] input):
+    return (<Py_intptr_t> NI_GET_LABEL[data_com])
+
+################################################################################
+# Delcaration of functions for using fused data type conversions
+################################################################################
+
+cdef int NI_GET_LABEL(data_com *data, np.flatiter _mi, np.intp_t *label, np.ndarray labels) nogil:
+    
+    cdef func2_p deref_p # from NI_fimd Objects funtins
+
+    if np.PyArray_ITER_DATA(_mi) is not NULL:
+        
+        if np.PyArray_ISBYTESWAPPED(labels) == True:
+            deref_p = get_misaligned_from_iter
+
+        else:
+            deref_p = get_misaligned_from_iter
+
+
+        label[0] = <data_com>  np.PyArray_ITER_DATA(_mi)
+
+    return 1
+
+
+
+################################################################################
+# Implementation of cenre of mass functtion
+################################################################################
+
 cpdef NI_CentreOfMass(np.ndarray input, np.ndarray labels,
                       np.intp_t min_label, np.intp_t max_label, npy_intp *indices,
                       np.intp_t n_results, np.float_t *center_of_mass):
+    
+    funcs = getFuncs_com(labels.take([0]))
+
     cdef:
+
         np.flatiter _ii, _mi
         np.PyArrayIterObject ii, mi
         np.uintp_t jj, kk, qq
-        np.intp_t size, rank, idx, label, doit
+        np.intp_t size, rank, idx doit
+        np.intp_t *label
         double *sum = NULL, val
-
+        
+        funcP_com NI_GET_LABEL = <func_p> <void *> <Py_intptr_t> funcs
 
 # Initialization of values:
         idx = 0
-        label = 1
+        label[0] = 1
         doit = 1
 
 # Initialization of iterator
-        _ii = PyArray_IterNew(_ii)
-        _mi = PyArray_IterNew(_mi)
+        _ii = PyArray_IterNew(input)
+        _mi = PyArray_IterNew(labels)
 
         ii = <PyArrayIterObject *> _ii
         _mi = <PyArrayIterObject *> _mi
@@ -252,16 +309,16 @@ cpdef NI_CentreOfMass(np.ndarray input, np.ndarray labels,
 
         # Iterate Over Array
         for jj in size:
-            NI_GET_LABEL:
+            NI_GET_LABEL(np.PyArray_ITER_DATA(_mi), _ii, label, labels)
             if min_label >=0 :
-                if label >= min_label and label <= max_label:
-                    idx = indices[label - min_label]
+                if label[0] >= min_label and label[0] <= max_label:
+                    idx = indices[label[0] - min_label]
                     doit = idx >= 0
 
                 else:
                     doit = 0
 
-            else doit = label != 0
+            else doit = label[0] != 0
 
             if doit is True:
                 val = NI_GET_VALUE()
@@ -269,7 +326,7 @@ cpdef NI_CentreOfMass(np.ndarray input, np.ndarray labels,
                 for kk in range rank:
                     center_of_mass[idx * rank + kk] += val * ii.coordinates[kk]
 
-            if label is True:
+            if label[0] is True:
                 PyArray_ITER_NEXT(_ii)
                 PyArray_ITER_NEXT(_mi)
 
