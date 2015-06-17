@@ -16,7 +16,7 @@ ctypedef void (*PyArray_CopySwapFunc)(void *, void *, int, void *)
 
 cdef extern from "numpy/arrayobject.h" nogil:
     ctypedef struct PyArrayIterObject:
-        np.npy_intp *coordinates
+        np.intp_t *coordinates
         char *dataptr
         np.npy_bool contiguous
 
@@ -131,7 +131,7 @@ cdef int findObjectsPoint(data_t *data, np.flatiter _iti, PyArrayIterObject *iti
 
 
 cpdef _find_objects(np.ndarray input, np.intp_t max_label):
-    funcs = get_funcs(input.take([0]))
+    cdef funcs = get_funcs(input.take([0]))
     
     # cdef func2_p deref_p 
 
@@ -220,7 +220,7 @@ cpdef _find_objects(np.ndarray input, np.intp_t max_label):
 # No wrapper function is used. This function is not being used bt scipy.ndimage
 # module to do anything.
 
-cpdef NI_CentreOfMass(np.ndarray input, np.ndarray labels,
+'''cpdef NI_CentreOfMass(np.ndarray input, np.ndarray labels,
                       np.intp_t min_label, np.intp_t max_label,
                       np.intp_t n_results):
     cdef:
@@ -288,7 +288,7 @@ cpdef NI_CentreOfMass(np.ndarray input, np.ndarray labels,
             center_of_mass[jj * rank + kk] /= sum[jj]
 
     PyDataMem_FREE(sum)
-
+'''
 
 
 ##############################################################################
@@ -297,28 +297,197 @@ cpdef NI_CentreOfMass(np.ndarray input, np.ndarray labels,
 ##############################################################################
 ##############################################################################
 
-DEF WS_MAXDIM 7
-DEF DONE_TYPE UInt8
-DEF COST_TYPE UInt16
 
-struct WatershedElement:
-    np.intp_t index
-    COST_TYPE cost
+DEF WS_MAXDIM = 7
+# DEF DONE_TYPE = np.uint8_t      Getting error: Np not definedat compile time
+# DEF COST_TYPE = np.uint16_t
+
+#############################################################################
+# Fused type delarations
+#############################################################################
+ctypedef fused data_watershed:
+    np.int8_t
+    np.int16_t
+
+ctypedef fused data_markers:
+    np.int8_t
+    np.int16_t
+    np.int32_t
+    np.int64_t
+    np.uint8_t
+    np.uint16_t
+    np.uint32_t
+    np.uint64_t
+
+
+ctypedef fused data_output:
+    np.int8_t
+    np.int16_t
+    np.int32_t
+    np.int64_t
+    np.uint8_t
+    np.uint16_t
+    np.uint32_t
+    np.uint64_t
+
+def get_funcp_watershed(np.ndarray[data_watershed] input, np.ndarray[data_markers] markers,
+                       np.ndarray[data_output] output):
+    return (<Py_intptr_t> get_value[data_watershed],
+            <Py_intptr_t> markers_to_output[data_markers, data_output] )
+
+ctypedef np.intp_t (*funcp_watershed)(void *data, np.flatiter x,
+                    PyArrayIterObject *y, np.ndarray input) nogil
+
+ctypedef np.intp_t (*funcp_markers_to_output)(void * data_m, void * data_o, np.flatiter _mi, 
+                    np.flatiter _li)
+
+cdef np.intp_t get_value(data_t *data, np.flatiter _iti, PyArrayObject *iti, 
+                         np.ndarray array):
+    #use byteswapped technique
+    return <np.intp_t>((<data_t *> np.PyArray_ITER_DATA(_iti))[0])
+
+cdef np.intp_t markers_to_output(data_markers *data_m, data_output *data_p, np.flatiter _mi, 
+                                np.flatiter _li):
+    #use byteswapping technique
+    cdef np.intp_t temp = 4
+    temp = (<data_markers *> np.PyArray_ITER_DATA(_mi))[0]
+    (<data_output *> np.PyArray_ITER_DATA(_mi))[0] = < data_output > temp
+    return temp
+
+#############################################################################
+# Basic function
+#############################################################################
+
+cdef struct WatershedElement:
+    np.uintp_t index
+    np.uint16_t cost
     void *next, *prev
-    DONE_TYPE done
+    np.uint8_t done
 
 cpdef int watershed_ift(np.ndarray input, np.ndarray markers, np.ndarray structure, 
                         np.ndarray output):
     cdef:
-        int ll, jj, hh, kk, i_contiguous, o_contiguous
-        np.intp_t size, maxval, nneigh, ssize
+        funcs = get_funcp_watershed(input.take([0]), markers.take([0]), output.take([0]))
+        int ll, jj, hh, kk, i_contiguous, o_contiguous, label
+        np.intp_t size, maxval, nneigh, ssize, ival
         np.intp_t strides[WS_MAXDIM], coordinates[WS_MAXDIM]
         np.intp_t *nstrides = NULL
-        Bool *ps = NULL
-        np.flatiter _mi, _ii, _li
+        bint *ps = NULL
+        np.flatiter _ii, _li, _mi
+        PyArrayIterObject *ii, *li, *mi
         WatershedElement *temp = NULL, **first = NULL, **last = NULL
+    
+    
+    # if input.ndim > WS_MAXDIM:
+    #     Raise RuntimeError("Too many dimensions")
+
+    ssize = structure.ndim
+    size = input.ndim
+
+    temp = <WatershedElement *> PyDataMem_NEW(size * sizeof(WatershedElement))
+    # Error condition
+    
+
+    # Iterator inititalization
+    _ii = np.PyArray_IterNew(input)
+    _li = np.PyArray_IterNew(output)
+    _mi = np.PyArray_IterNew(markers)
+
+    ii = <PyArrayIterObject *> _ii
+    li = <PyArrayIterObject *> _li
+    mi = <PyArrayIterObject *> _mi
+
+    cdef funcp_watershed get_value = <funcp_watershed> <void *><Py_intptr_t> funcs[0]
+    cdef funcp_markers_to_output markers_to_output = <funcp_markers_to_output> <void *> <Py_intptr_t> funcs[1]
+
+    
+    for jj in range(size):
+        # Need value in function in ival from pi using fused_type
+        ival = get_value(np.PyArray_ITER_DATA(_ii), _ii, ii, input)
+
+        temp[jj].index = jj
+        temp[jj].done = 0
+        if ival > maxval:
+            maxval = ival
+
+        np.PyArray_ITER_NEXT(_ii)
+    
+    # Allocate and initialize the storage for the queue
+    first = <WatershedElement ** >  PyDataMem_NEW((maxval + 1) * sizeof(WatershedElement *))
+    last =  <WatershedElement ** > PyDataMem_NEW((maxval + 1) * sizeof(WatershedElement *))
+    # error in allocations
+    
+
+    for hh in range(maxval):
+        first[hh] = last[hh] = NULL
+
+    for ll in range(input.ndim):
+        coordinates[ll] = 0
+
+    for jj in range(size):
+        label = markers_to_output(np.PyArray_ITER_DATA(_mi), np.PyArray_ITER_DATA(_li), _mi, _li)
+        np.PyArray_ITER_NEXT(_mi)
+        np.PyArray_ITER_NEXT(_li)
+        if label != 0:
+            temp[jj].cost = 0
+            if first[0] == 0:
+                first[0] = &(temp[jj])
+                # beware here.. could get erreors
+                first[0].prev = NULL
+                first[0].next = NULL
+                last[0] = first[0]
+
+            else:
+                if label > 0:
+                    temp[jj].next = first[0]
+                    temp[jj].prev = NULL
+                    first[0]->prev = &(temp[jj])
+                    first[0] = &(temp[jj])
+
+                else:
+                    temp[jj].next = NULL
+                    temp[jj].prev = last[0]
+                    last[0]->next = &(temp[jj])
+                    last[0] = &(temp[jj])
+
+        else:
+            temp[jj].cost = maxval + 1
+            temp[jj].next = NULL
+            temp[jj].prev = NULL
+
+        ll = input.ndim - 1
+        while ll >=0:
+            if coordinates[ll] < input.dimensions[ll] - 1:
+                coordinates[ll]++
+                break
+
+            else:
+                coordinates[ll] = 0
+            ll--
+
+    nneigh = 0
+    for kk in range(ssize):
+        
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
 
 
 
@@ -330,7 +499,7 @@ cpdef int watershed_ift(np.ndarray input, np.ndarray markers, np.ndarray structu
 
 
 
-
+'''
 
 
 
@@ -675,3 +844,4 @@ char *pl, *pm, *pi;
     free(nstrides);
     return PyErr_Occurred() ? 0 : 1;
 }
+'''
