@@ -430,7 +430,7 @@ cpdef int watershed_ift(np.ndarray input, np.ndarray markers, np.ndarray structu
         np.PyArray_ITER_NEXT(_li)
         if label != 0:
             temp[jj].cost = 0
-            if first[0] == 0:
+            if first[0] is NULL:
                 first[0] = &(temp[jj])
                 # beware here.. could get erreors
                 first[0].prev = NULL
@@ -441,13 +441,13 @@ cpdef int watershed_ift(np.ndarray input, np.ndarray markers, np.ndarray structu
                 if label > 0:
                     temp[jj].next = first[0]
                     temp[jj].prev = NULL
-                    first[0]->prev = &(temp[jj])
+                    first[0].prev = &(temp[jj])
                     first[0] = &(temp[jj])
 
                 else:
                     temp[jj].next = NULL
                     temp[jj].prev = last[0]
-                    last[0]->next = &(temp[jj])
+                    last[0].next = &(temp[jj])
                     last[0] = &(temp[jj])
 
         else:
@@ -458,16 +458,178 @@ cpdef int watershed_ift(np.ndarray input, np.ndarray markers, np.ndarray structu
         ll = input.ndim - 1
         while ll >=0:
             if coordinates[ll] < input.dimensions[ll] - 1:
-                coordinates[ll]++
+                coordinates[ll] += 1
                 break
 
             else:
                 coordinates[ll] = 0
-            ll--
+            ll -= 1
 
     nneigh = 0
     for kk in range(ssize):
-        
+        if ps[kk] and kk != ssize/2:
+            nneigh += 1
+
+    nstrides = <np.intp_t *> PyDataMem_NEW(nneigh * sizeof(np.intp_t))
+
+    ##
+    ## NI_UNLIKELY
+    ## 
+    
+    strides[input.ndim -1] = 1
+
+    for ll in range(input.ndim -1) :
+        strides[ll] = input.dimensions[ll + 1] * strides[ll + 1]
+
+    for ll in range(input.ndim):
+        coordinates[ll] = -1
+
+    for kk in range(nneigh):
+        nstrides[kk] = 0
+
+    jj = 0
+    cdef int offset = 0
+
+    for kk in range(ssize):
+        if ps[kk] is not 0:
+            for ll in range(input.ndim):
+                offset += coordinates[ll] * strides[ll]
+            if offset is not 0:
+                nstrides[jj] += offset
+                jj += 1
+
+
+        ll = input.ndim -1
+        while ll >= 0:
+            if coordinates[ll] < 1:
+                coordinates[ll] += 1
+
+            else:
+                coordinates[ll] = -1
+
+
+    # Propogation Phase
+    cdef:
+        WatershedElement *v, *p, *prev, *next
+        np.intp_t v_index, p_index, idx, cc
+        int qq, outside
+        int max, pval, vval, wvp, pcost, p_idx, v_idx
+    
+    for jj in range(maxval +1):
+        while first[jj] is not NULL:
+            v = first[jj]
+            first[jj] = <WatershedElement *>first[jj].next
+            if first[jj] is not NULL:
+                first[jj].prev = NULL
+
+            v.prev = NULL
+            v.next = NULL
+
+            v.done = 1
+
+            for hh in range(nneigh):
+                v_index = v.index
+                p_index = v.index
+                outside = 0
+                p_index += nstrides[hh]
+                # Check if the neighbour is within the extenet of the array
+                idx = p_index
+                for qq in range(input.ndim):
+                    cc = idx / strides[qq]
+                    if cc < 0 or cc >=input.dimensions[qq]:
+                        outside = 1
+                        break
+
+                if outside is not 0:
+                    p = &(temp[p_index])
+                    # If the neighbour is not processed Yet
+                    if p.done is 0:
+                        # CASE_Windex
+                        # Case_windex
+                        # case_Windex
+                        
+                        # Calculate Cost
+                        wvp = pval - vval
+                        if wvp < 0:
+                            wvp = -wvp
+                        # Find the maximum of this cost and the current element cost
+                        pcost = p.cost
+                        if v.cost > wvp:
+                            max = v.cost
+
+                        else:
+                            max = wvp
+
+                        if max < pcost:
+                            # If this maximum is less than the neighbors cost,
+                            # adapt the cost and the label of the neighbor: 
+                            p.cost = max
+                            # CASE_WINDEX2
+                            # CASE_WINDEX2
+                            # CASE_WINDEX2
+                            # CASE_WINDEX2
+                            # CASE_WINDEX2
+                            # CASE_WINDEX3
+                            # CASE_WINDEX3
+                            # CASE_WINDEX3
+                            # CASE_WINDEX3
+                            # CASE_WINDEX3
+                            
+                            # If the neighbor is in a queue, remove it:
+                            if p.next or p.prev is not NULL:
+                                prev = <WatershedElement *> p.prev
+                                next = <WatershedElement *> p.next
+                                if first[pcost] == p:
+                                    first[pcost] = next
+
+                                if last[pcost] == p:
+                                    last[pcost] = p
+
+                                if prev is not NULL:
+                                    prev.next = next
+
+                                if next is not NULL:
+                                    next.prev = prev
+
+                            # Insert the neighbor in the appropiate queue:
+                            if label < 0:
+                                p.prev = last[max]
+                                p.next = NULL
+                                if last[max] is not NULL:
+                                    last[max].next = p
+                                last[max] = p
+                                if first[max] is NULL:
+                                    first[max] = p
+
+                            else:
+                                p.next = first[max]
+                                p.prev = NULL
+                                if first[max] is not NULL:
+                                    first[max].prev = p
+                                first[max] = p
+                                if last[max] is NULL:
+                                    last[max] = p
+
+
+
+
+
+
+
+
+
+
+
+
+                        
+
+
+
+
+
+
+
+
 
 
 
@@ -519,14 +681,14 @@ char *pl, *pm, *pi;
     i_contiguous = PyArray_ISCONTIGUOUS(input);
     o_contiguous = PyArray_ISCONTIGUOUS(output);
     ssize = 1;
-    for(ll = 0; ll < strct->nd; ll++)
+    for(ll = 0; ll < strct->nd; ll += 1)
         ssize *= strct->dimensions[ll];
     if (input->nd > WS_MAXDIM) {
         PyErr_SetString(PyExc_RuntimeError, "too many dimensions");
         goto exit;
     }
     size = 1;
-    for(ll = 0; ll < input->nd; ll++)
+    for(ll = 0; ll < input->nd; ll += 1)
         size *= input->dimensions[ll];
     /* Storage for the temporary queue data. */
     temp = malloc(size * sizeof(NI_WatershedElement));
@@ -542,7 +704,7 @@ char *pl, *pm, *pi;
         goto exit;
     /* Initialization and find the maximum of the input. */
     maxval = 0;
-    for(jj = 0; jj < size; jj++) {
+    for(jj = 0; jj < size; jj += 1) {
         npy_intp ival = 0;
         switch(NI_NormalizeType(input->descr->type_num)) {
         CASE_GET_INPUT(ival, pi, UInt8);
@@ -567,7 +729,7 @@ char *pl, *pm, *pi;
         PyErr_NoMemory();
         goto exit;
     }
-    for(hh = 0; hh <= maxval; hh++) {
+    for(hh = 0; hh <= maxval; hh += 1) {
         first[hh] = NULL;
         last[hh] = NULL;
     }
@@ -578,9 +740,9 @@ char *pl, *pm, *pi;
     pm = (void *)PyArray_DATA(markers);
     pl = (void *)PyArray_DATA(output);
     /* initialize all nodes */
-    for(ll = 0; ll < input->nd; ll++)
+    for(ll = 0; ll < input->nd; ll += 1)
         coordinates[ll] = 0;
-    for(jj = 0; jj < size; jj++) {
+    for(jj = 0; jj < size; jj += 1) {
         /* get marker */
         int label = 0;
         switch(NI_NormalizeType(markers->descr->type_num)) {
@@ -647,9 +809,9 @@ char *pl, *pm, *pi;
             temp[jj].next = NULL;
             temp[jj].prev = NULL;
         }
-        for(ll = input->nd - 1; ll >= 0; ll--)
+        for(ll = input->nd - 1; ll >= 0; ll -= 1)
             if (coordinates[ll] < input->dimensions[ll] - 1) {
-                coordinates[ll]++;
+                coordinates[ll] += 1;
                 break;
             } else {
                 coordinates[ll] = 0;
@@ -659,9 +821,9 @@ char *pl, *pm, *pi;
     pl = (void *)PyArray_DATA(output);
     ps = (Bool*)PyArray_DATA(strct);
     nneigh = 0;
-    for (kk = 0; kk < ssize; kk++)
+    for (kk = 0; kk < ssize; kk += 1)
         if (ps[kk] && kk != (ssize / 2))
-            ++nneigh;
+             += 1nneigh;
     nstrides = malloc(nneigh * sizeof(npy_intp));
     if (NI_UNLIKELY(!nstrides)) {
         NPY_END_THREADS;
@@ -669,31 +831,31 @@ char *pl, *pm, *pi;
         goto exit;
     }
     strides[input->nd - 1] = 1;
-    for(ll = input->nd - 2; ll >= 0; ll--)
+    for(ll = input->nd - 2; ll >= 0; ll -= 1)
         strides[ll] = input->dimensions[ll + 1] * strides[ll + 1];
-    for(ll = 0; ll < input->nd; ll++)
+    for(ll = 0; ll < input->nd; ll += 1)
         coordinates[ll] = -1;
-    for(kk = 0; kk < nneigh; kk++)
+    for(kk = 0; kk < nneigh; kk += 1)
         nstrides[kk] = 0;
     jj = 0;
-    for(kk = 0; kk < ssize; kk++) {
+    for(kk = 0; kk < ssize; kk += 1) {
         if (ps[kk]) {
             int offset = 0;
-            for(ll = 0; ll < input->nd; ll++)
+            for(ll = 0; ll < input->nd; ll += 1)
                 offset += coordinates[ll] * strides[ll];
             if (offset != 0)
-                nstrides[jj++] += offset;
+                nstrides[jj += 1] += offset;
         }
-        for(ll = input->nd - 1; ll >= 0; ll--)
+        for(ll = input->nd - 1; ll >= 0; ll -= 1)
             if (coordinates[ll] < 1) {
-                coordinates[ll]++;
+                coordinates[ll] += 1;
                 break;
             } else {
                 coordinates[ll] = -1;
             }
     }
     /* Propagation phase: */
-    for(jj = 0; jj <= maxval; jj++) {
+    for(jj = 0; jj <= maxval; jj += 1) {
         while (first[jj]) {
             /* dequeue first element: */
             NI_WatershedElement *v = first[jj];
@@ -705,13 +867,13 @@ char *pl, *pm, *pi;
             /* Mark element as done: */
             v->done = 1;
             /* Iterate over the neighbors of the element: */
-            for(hh = 0; hh < nneigh; hh++) {
+            for(hh = 0; hh < nneigh; hh += 1) {
                 npy_intp v_index = v->index, p_index = v->index, idx, cc;
                 int qq, outside = 0;
                 p_index += nstrides[hh];
                 /* check if the neighbor is within the extent of the array: */
                 idx = p_index;
-                for (qq = 0; qq < input->nd; qq++) {
+                for (qq = 0; qq < input->nd; qq += 1) {
                     cc = idx / strides[qq];
                     if (cc < 0 || cc >= input->dimensions[qq]) {
                         outside = 1;
