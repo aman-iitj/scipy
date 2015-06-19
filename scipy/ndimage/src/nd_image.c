@@ -602,54 +602,54 @@ exit:
     return PyErr_Occurred() ? NULL : Py_BuildValue("");
 }
 
-static PyObject *Py_ZoomShift(PyObject *obj, PyObject *args)
-{
-    PyArrayObject *input = NULL, *output = NULL, *shift = NULL;
-    PyArrayObject *zoom = NULL;
-    int mode, order;
-    double cval;
+// static PyObject *Py_ZoomShift(PyObject *obj, PyObject *args)
+// {
+//     PyArrayObject *input = NULL, *output = NULL, *shift = NULL;
+//     PyArrayObject *zoom = NULL;
+//     int mode, order;
+//     double cval;
 
-    if (!PyArg_ParseTuple(args, "O&O&O&O&iid",
-                          NI_ObjectToInputArray, &input,
-                          NI_ObjectToOptionalInputArray, &zoom,
-                          NI_ObjectToOptionalInputArray, &shift,
-                          NI_ObjectToOutputArray, &output,
-                          &order, &mode, &cval))
-        goto exit;
+//     if (!PyArg_ParseTuple(args, "O&O&O&O&iid",
+//                           NI_ObjectToInputArray, &input,
+//                           NI_ObjectToOptionalInputArray, &zoom,
+//                           NI_ObjectToOptionalInputArray, &shift,
+//                           NI_ObjectToOutputArray, &output,
+//                           &order, &mode, &cval))
+//         goto exit;
 
-    if (!NI_ZoomShift(input, zoom, shift, output, order, (NI_ExtendMode)mode,
-                                        cval))
-        goto exit;
+//     if (!NI_ZoomShift(input, zoom, shift, output, order, (NI_ExtendMode)mode,
+//                                         cval))
+//         goto exit;
 
-exit:
-    Py_XDECREF(input);
-    Py_XDECREF(shift);
-    Py_XDECREF(zoom);
-    Py_XDECREF(output);
-    return PyErr_Occurred() ? NULL : Py_BuildValue("");
-}
+// exit:
+//     Py_XDECREF(input);
+//     Py_XDECREF(shift);
+//     Py_XDECREF(zoom);
+//     Py_XDECREF(output);
+//     return PyErr_Occurred() ? NULL : Py_BuildValue("");
+// }
 
 
-static PyObject *Py_WatershedIFT(PyObject *obj, PyObject *args)
-{
-    PyArrayObject *input = NULL, *output = NULL, *markers = NULL;
-    PyArrayObject *strct = NULL;
+// static PyObject *Py_WatershedIFT(PyObject *obj, PyObject *args)
+// {
+//     PyArrayObject *input = NULL, *output = NULL, *markers = NULL;
+//     PyArrayObject *strct = NULL;
 
-    if (!PyArg_ParseTuple(args, "O&O&O&O&", NI_ObjectToInputArray, &input,
-                    NI_ObjectToInputArray, &markers, NI_ObjectToInputArray,
-                    &strct, NI_ObjectToOutputArray, &output))
-        goto exit;
+//     if (!PyArg_ParseTuple(args, "O&O&O&O&", NI_ObjectToInputArray, &input,
+//                     NI_ObjectToInputArray, &markers, NI_ObjectToInputArray,
+//                     &strct, NI_ObjectToOutputArray, &output))
+//         goto exit;
 
-    if (!NI_WatershedIFT(input, markers, strct, output))
-        goto exit;
+//     if (!NI_WatershedIFT(input, markers, strct, output))
+//         goto exit;
 
-exit:
-    Py_XDECREF(input);
-    Py_XDECREF(markers);
-    Py_XDECREF(strct);
-    Py_XDECREF(output);
-    return PyErr_Occurred() ? NULL : Py_BuildValue("");
-}
+// exit:
+//     Py_XDECREF(input);
+//     Py_XDECREF(markers);
+//     Py_XDECREF(strct);
+//     Py_XDECREF(output);
+//     return PyErr_Occurred() ? NULL : Py_BuildValue("");
+// }
 
 static PyObject *Py_DistanceTransformBruteForce(PyObject *obj,
                                                                                                 PyObject *args)

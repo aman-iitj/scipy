@@ -609,55 +609,13 @@ cpdef int watershed_ift(np.ndarray input, np.ndarray markers, np.ndarray structu
                                 first[max] = p
                                 if last[max] is NULL:
                                     last[max] = p
-
-
-
-
-
-
-
-
-
-
-
-
-                        
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-
-
-
     
+    PyDataMem_FREE(temp)
+    PyDataMem_FREE(first)
+    PyDataMem_FREE(last)
+    PyDataMem_FREE(nstrides)
 
-
-
-
+    return 1
 
 
 

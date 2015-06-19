@@ -665,7 +665,7 @@ int NI_WatershedIFT(PyArrayObject* input, PyArrayObject* markers,
     for(jj = 0; jj < size; jj++) {
         /* get marker */
         int label = 0;
-        switch(NI_NormalizeType(markers->descr->type_num)) {
+            switch(NI_NormalizeType(markers->descr->type_num)) {
         CASE_GET_LABEL(label, pm, UInt8);
         CASE_GET_LABEL(label, pm, UInt16);
         CASE_GET_LABEL(label, pm, UInt32);
