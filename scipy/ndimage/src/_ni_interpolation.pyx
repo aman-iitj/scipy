@@ -4,11 +4,11 @@ cimport cython
 from cython cimport sizeof
 import numpy as np
 cimport numpy as np
-from libc.math cimport floor
+from libc.math cimport floor, fabs
 
 np.import_array()
 
-DEF MAXDIM = 6
+DEF MAXDIM = 6##################### To be imported from any xternal file..
 cdef extern from *:
    ctypedef int Py_intptr_t
 
@@ -38,6 +38,151 @@ cdef extern from "numpy/arrayobject.h" nogil:
 
 
 # Define all the required files:
+
+cdef void spline_coefficients(double x, int order, double *result):
+    cdef:
+        int hh
+        double y, start, f
+
+    if order & 1:
+        start = <int> floor(x) - order / 2
+    else:
+        start = <int> floor(x + 0.5) - order / 2
+
+    for hh in range(order + 1):
+        y = fabs(start - x + hh)
+        
+
+        #No switch statements in cython :(
+        if order == 1:
+            if y > 1.0:
+                result[hh] = 0.0 - y
+            else:
+                result[hh] = 1.0- y
+
+        elif order == 2:
+            if y < 0.5:
+                result[hh] = 0.75 - y * y
+
+            elif y < 1.5:
+                y = 1.5 - y
+            else:
+                result[hh] = 0.0
+
+        elif order == 3:
+            if y < 1.0:
+                result[hh] = (y * y * (y - 2.0) * 3.0 + 4.0) / 6.0
+            elif y < 2.0:
+                y = 2.0 -y
+                result[hh] = y * y * y / 6.0
+            else:
+                result[hh] = 0.0
+
+        elif order == 4:
+            if y < 0.5:
+                y *= y
+                result[hh] = y * (y * 0.25 - 0.625) + 115.0 / 192.0
+            elif y < 1.5:
+                result[hh] = y * (y * (y * (5.0 / 6.0 - y / 6.0) - 1.25) + 5.0 / 24.0) + 55.0 / 96.0
+            elif: y <  2.5:
+                y -= 2.5
+                y *= y
+                result[hh] = y * y / 24.0
+            else:
+                result[hh] = 0.0
+
+        elif order == 5:
+            if y < 1.0:
+                f = y * y
+                result[hh] = f * (f * (0.25 - y / 12.0) - 0.5) + 0.55
+            elif y < 2.0:
+                result[hh] = y * (y * (y * (y * (y / 24.0 - 0.375) + 1.25) - 1.75) + 0.625) + 0.425
+            elif y < 3.0:
+                f = 3.0 - y
+                y = f * f
+                result[hh] = f * y * y / 120.0
+            else:
+                result[hh] = 0.0
+
+        else:
+            error raise
+
+cdef map_coordinate(double in, np.intp_t len, int mode):
+    cdef np.intp_t sz, sz2
+    if in < 0:
+        if mode == NI_EXTEND_MIRROR:
+            if len <= 1:
+                in = 0
+            else:
+                sz2 = 2 * len - 2
+                in = sz2 * <np.intp_t> (-in / sz2) + in
+                if in <= 1 - len:
+                    in += sz2
+                else:
+                    -in
+
+        elif mode == NI_EXTEND_REFLECT:
+            if len <= 1:
+                in = 0
+            else:
+                sz2 = 2 * len
+            if in < -sz2:
+                in = sz2 * <np.intp_t> (-in / sz2) + in
+            if in < -len:
+                in +=sz2
+            else:
+                in = -in - 1
+
+        elif mode == NI_EXTEND_WRAP:
+            if len <= 1:
+                in = 0
+            else:
+                sz = len -1
+                # Integer division of -in/sz gives (-in mod sz)
+                # Note that 'in' is negative
+                in += sz * (<np.intp_t> (-in / sz) + 1)
+
+        elif mode == NI_EXTEND_NEAREST:
+            in = 0
+
+        elif mode == NI_EXTEND_CONSTANT:
+            in = -1
+
+    elif in > len - 1:
+        if mode == NI_EXTEND_MIRROR:
+            if len <= 1:
+                in = 0
+            else:
+                sz2 = 2 * len - 2
+                in -= sz2 * <np.intp_t> (in / sz2)
+                if in >= len:
+                    in = sz2 - in
+
+        if mode == NI_EXTEND_REFLECT:
+            if len <= 1:
+                in = 0
+            else:
+                sz2 = 2 * len
+                in -= sz2 * <np.intp_t>(in / sz2)
+                if (in >= len)
+                    in = sz2 - in - 1
+
+        if mode == NI_EXTEND_WRAP:
+            if len <= 1:
+                in = 0
+            else
+                sz = len - 1
+                in -= sz * <np.intp_t> (in / sz)
+
+        if mode == NI_EXTEND_NEAREST:
+            in = len - 1
+
+        if mode == NI_EXTEND_CONSTANT:
+            in = -1
+
+    return in
+
+
 
 cpdef int _zoom_shift(np.ndarray input, np.ndarray zoom_ar, np.ndarray shift_ar, np.ndarray output, int order, int mode, double cval):
     cdef:
