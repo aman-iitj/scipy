@@ -8,7 +8,6 @@ from libc.math cimport floor, fabs
 
 np.import_array()
 
-DEF MAXDIM = 6##################### To be imported from any xternal file..
 cdef extern from *:
    ctypedef int Py_intptr_t
 
@@ -25,6 +24,8 @@ cdef enum NI_ExtendMode:
 ctypedef void (*PyArray_CopySwapFunc)(void *, void *, int, void *)
 
 cdef extern from "numpy/arrayobject.h" nogil:
+    cdef enum:
+        NPY_MAXDIMS
     ctypedef struct PyArrayIterObject:
         np.intp_t *coordinates
         char *dataptr
@@ -49,7 +50,7 @@ cdef extern from "numpy/arrayobject.h" nogil:
 
 # Define all the required files:
 
-cdef void spline_coefficients(double x, int order, double *result):
+cdef int spline_coefficients(double x, int order, double *result):
     cdef:
         int hh
         double y, start, f
@@ -94,7 +95,7 @@ cdef void spline_coefficients(double x, int order, double *result):
                 result[hh] = y * (y * 0.25 - 0.625) + 115.0 / 192.0
             elif y < 1.5:
                 result[hh] = y * (y * (y * (5.0 / 6.0 - y / 6.0) - 1.25) + 5.0 / 24.0) + 55.0 / 96.0
-            elif: y <  2.5:
+            elif y <  2.5:
                 y -= 2.5
                 y *= y
                 result[hh] = y * y / 24.0
@@ -114,92 +115,135 @@ cdef void spline_coefficients(double x, int order, double *result):
             else:
                 result[hh] = 0.0
 
-        else:
-            error raise
+        # else:
+        #     error raise
+    return 0
 
-cdef map_coordinate(double in, np.intp_t len, int mode):
+cdef double map_coordinate(double cc, np.intp_t len, int mode):
     cdef np.intp_t sz, sz2
-    if in < 0:
+    if cc < 0:
         if mode == NI_EXTEND_MIRROR:
             if len <= 1:
-                in = 0
+                cc = 0
             else:
                 sz2 = 2 * len - 2
-                in = sz2 * <np.intp_t> (-in / sz2) + in
-                if in <= 1 - len:
-                    in += sz2
+                cc = sz2 * <np.intp_t> (-cc / sz2) + cc
+                if cc <= 1 - len:
+                    cc += sz2
                 else:
-                    -in
+                    cc = -cc
 
         elif mode == NI_EXTEND_REFLECT:
             if len <= 1:
-                in = 0
+                cc = 0
             else:
                 sz2 = 2 * len
-            if in < -sz2:
-                in = sz2 * <np.intp_t> (-in / sz2) + in
-            if in < -len:
-                in +=sz2
+            if cc < -sz2:
+                cc = sz2 * <np.intp_t> (-cc / sz2) + cc
+            if cc < -len:
+                cc +=sz2
             else:
-                in = -in - 1
+                cc = -cc - 1
 
         elif mode == NI_EXTEND_WRAP:
             if len <= 1:
-                in = 0
+                cc = 0
             else:
                 sz = len -1
-                # Integer division of -in/sz gives (-in mod sz)
-                # Note that 'in' is negative
-                in += sz * (<np.intp_t> (-in / sz) + 1)
+                # Integer division of -cc/sz gives (-cc mod sz)
+                # Note that 'cc' is negative
+                cc += sz * (<np.intp_t> (-cc / sz) + 1)
 
         elif mode == NI_EXTEND_NEAREST:
-            in = 0
+            cc = 0
 
         elif mode == NI_EXTEND_CONSTANT:
-            in = -1
+            cc = -1
 
-    elif in > len - 1:
+    elif cc > len - 1:
         if mode == NI_EXTEND_MIRROR:
             if len <= 1:
-                in = 0
+                cc = 0
             else:
                 sz2 = 2 * len - 2
-                in -= sz2 * <np.intp_t> (in / sz2)
-                if in >= len:
-                    in = sz2 - in
+                cc -= sz2 * <np.intp_t> (cc / sz2)
+                if cc >= len:
+                    cc = sz2 - cc
 
         if mode == NI_EXTEND_REFLECT:
             if len <= 1:
-                in = 0
+                cc = 0
             else:
                 sz2 = 2 * len
-                in -= sz2 * <np.intp_t>(in / sz2)
-                if (in >= len)
-                    in = sz2 - in - 1
+                cc -= sz2 * <np.intp_t>(cc / sz2)
+                if cc >= len:
+                    cc = sz2 - cc - 1
 
         if mode == NI_EXTEND_WRAP:
             if len <= 1:
-                in = 0
-            else
+                cc = 0
+            else:
                 sz = len - 1
-                in -= sz * <np.intp_t> (in / sz)
+                cc -= sz * <np.intp_t> (cc / sz)
 
         if mode == NI_EXTEND_NEAREST:
-            in = len - 1
+            cc = len - 1
 
         if mode == NI_EXTEND_CONSTANT:
-            in = -1
+            cc = -1
+`
+    return cc
 
-    return in
+
+####################################################################################
+# Implmenetations of function zoom_shift
+#################################################################################
+
+# Have to leave it since this ucntion uses line_iterator
+
+cpdef int _geometric_Transform(np.ndarray input, ........................):
+    cdef:
+        np.intp_t **edge_offsets = NULL, **data_offsets = NULL, filter_size
+        np.intp_t ftmp[MAXDIM], *fcoordinates = NULL, *foffsets = NULL
+        np.intp_t cstride = 0, kk, hh, ll, jj
+        np.intp_t size
+        double **splvals = NULL, icoor[MAXDIM]
+        np.intp_t idimensions[MAXDIM], istrides[MAXDIM]
+        np.flatiter _io, _ic
+        PyArrayIterObject *io, *ic
+        np.float64_t  *matrix #= matrix_ar ? (Float64*)PyArray_DATA(matrix_ar) : NULL;
+        np.float64_t *shift #= shift_ar ? (Float64*)PyArray_DATA(shift_ar) : NULL;
+        int irank = 0, orank, qq
+    
+    irank = input.ndim
+    orank = output.ndim
+    # Keep an eye whether you can complete the function without this
+    for kk in range(irank):
+        idimensions[kk] = input.dimensions[kk]
+        istrides[kk] = input.strides[kk]
+
+    # if the mapping is from array coordinates:
+    if coordinates:
+        # use of line_itrator
 
 
+    
+
+
+
+
+
+
+####################################################################################
+# Implmenetations of function zoom_shift
+#################################################################################
 
 cpdef int _zoom_shift(np.ndarray input, np.ndarray zoom_ar, np.ndarray shift_ar, np.ndarray output, int order, int mode, double cval):
     cdef:
         np.intp_t **zeroes = NULL, **offsets = NULL, ***edge_offsets = NULL
-        np.intp_t ftmp[MAXDIM], *fcoordinates = NULL, *foffsets = NULL
-        np.intp_t filter_size, odimensions[MAXDIM]
-        np.intp_t idimensions[MAXDIM], istrides[MAXDIM]
+        np.intp_t ftmp[NPY_MAXDIMS], *fcoordinates = NULL, *foffsets = NULL
+        np.intp_t filter_size, odimensions[NPY_MAXDIMS]
+        np.intp_t idimensions[NPY_MAXDIMS], istrides[NPY_MAXDIMS]
         np.intp_t size
         double ***splvals = NULL
         np.flatiter _io
@@ -274,7 +318,7 @@ cpdef int _zoom_shift(np.ndarray input, np.ndarray zoom_ar, np.ndarray shift_ar,
             if zooms is not NULL:
                 cc *= zoom
 
-        # cc = map_coordinate(cc, idimensions[jj], mode)            fUNCTION TO BE CALLED
+        # cc = map_coordinate(cc, idimensions[jj], mode)
         if cc > -1.0:
             if zeros is not NULL and zeros[jj] is not NULL:
                 zeros[jj][kk] = 0
@@ -311,7 +355,7 @@ cpdef int _zoom_shift(np.ndarray input, np.ndarray zoom_ar, np.ndarray shift_ar,
                 splvals[jj][kk] = <double *> PyDataMem_NEW((order + 1) * sizeof(double))
                 # NI_unlikely line 798
 
-                # spline_coefficients(cc, order, splvals[jj][kk]) #######################Functions  
+                spline_coefficients(cc, order, splvals[jj][kk]) #######################Functions  
 
             else:
                 zeros[jj][kk] = 1
