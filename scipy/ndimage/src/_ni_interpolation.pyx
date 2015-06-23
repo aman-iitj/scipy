@@ -12,6 +12,16 @@ DEF MAXDIM = 6##################### To be imported from any xternal file..
 cdef extern from *:
    ctypedef int Py_intptr_t
 
+cdef enum NI_ExtendMode:
+    NI_EXTEND_FIRST = 0,
+    NI_EXTEND_NEAREST = 0,
+    NI_EXTEND_WRAP = 1,
+    NI_EXTEND_REFLECT = 2,
+    NI_EXTEND_MIRROR = 3,
+    NI_EXTEND_CONSTANT = 4,
+    NI_EXTEND_LAST = NI_EXTEND_CONSTANT,
+    NI_EXTEND_DEFAULT = NI_EXTEND_MIRROR
+
 ctypedef void (*PyArray_CopySwapFunc)(void *, void *, int, void *)
 
 cdef extern from "numpy/arrayobject.h" nogil:
