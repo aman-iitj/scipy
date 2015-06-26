@@ -191,47 +191,8 @@ cdef double map_coordinate(double cc, np.intp_t len, int mode):
 
         if mode == NI_EXTEND_CONSTANT:
             cc = -1
-`
+
     return cc
-
-
-####################################################################################
-# Implmenetations of function zoom_shift
-#################################################################################
-
-# Have to leave it since this ucntion uses line_iterator
-
-cpdef int _geometric_Transform(np.ndarray input, ........................):
-    cdef:
-        np.intp_t **edge_offsets = NULL, **data_offsets = NULL, filter_size
-        np.intp_t ftmp[MAXDIM], *fcoordinates = NULL, *foffsets = NULL
-        np.intp_t cstride = 0, kk, hh, ll, jj
-        np.intp_t size
-        double **splvals = NULL, icoor[MAXDIM]
-        np.intp_t idimensions[MAXDIM], istrides[MAXDIM]
-        np.flatiter _io, _ic
-        PyArrayIterObject *io, *ic
-        np.float64_t  *matrix #= matrix_ar ? (Float64*)PyArray_DATA(matrix_ar) : NULL
-        np.float64_t *shift #= shift_ar ? (Float64*)PyArray_DATA(shift_ar) : NULL
-        int irank = 0, orank, qq
-    
-    irank = input.ndim
-    orank = output.ndim
-    # Keep an eye whether you can complete the function without this
-    for kk in range(irank):
-        idimensions[kk] = input.dimensions[kk]
-        istrides[kk] = input.strides[kk]
-
-    # if the mapping is from array coordinates:
-    if coordinates:
-        # use of line_itrator
-
-
-    
-
-
-
-
 
 
 ####################################################################################
