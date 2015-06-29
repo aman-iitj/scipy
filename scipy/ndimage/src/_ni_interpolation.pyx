@@ -194,24 +194,83 @@ cdef double map_coordinate(double cc, np.intp_t len, int mode):
 
     return cc
 
+####################################################################################
+# Implementation of fused data type
+#################################################################################
+
+ctypedef fused data_t:
+    np.npy_bool
+    
+    np.int8_t
+    np.int16_t
+    np.int32_t
+    np.int64_t
+
+    np.uint8_t
+    np.uint16_t
+    np.uint32_t
+    np.uint64_t
+
+    np.float32_t
+    np.float64_t
+
+ctypedef fused data2_t:
+    np.npy_bool
+    
+    np.int8_t
+    np.int16_t
+    np.int32_t
+    np.int64_t
+
+    np.uint8_t
+    np.uint16_t
+    np.uint32_t
+    np.uint64_t
+
+    np.float32_t
+    np.float64_t
+
+ctypedef void (*func_i)(void *data, np.flatiter _iti, PyArrayIterObject *iti, 
+                        np.ndarray input, np.intp_t idx, np.double* coeff) nogil
+
+ctypedef void (*func_o)(void *data, double t, np.ndarray output) nogil
+
+
+def get_funcs(np.ndarray[data_t] input, np.ndarray[data2_t]):
+    return (<Py_intptr_t> get_value[data_t], <Py_intptr_t> get_value[data2_t])
+
+cdef void get_value(data_t *data, np.flatiter _iti, PyArrayIterObject *iti, 
+                                np.ndarray input, np.intp_t idx, double * coeff):
+    coeff[0] = (<data_t *> (data + idx))[0]
+
+cdef void save_output(data2_t *data, double t, np.ndarray output):
+    (<data2_t *> data)[0] = <data2_t> t
+
+    
 
 ####################################################################################
-# Implmenetations of function zoom_shift
+# Implmenetation of function zoom_shift
 #################################################################################
 
 cpdef int _zoom_shift(np.ndarray input, np.ndarray zoom_ar, np.ndarray shift_ar, np.ndarray output, int order, int mode, double cval):
     cdef:
+        funcs = get_funcs(input.take([0]), output.take[0])
         np.intp_t **zeroes = NULL, **offsets = NULL, ***edge_offsets = NULL
         np.intp_t ftmp[NPY_MAXDIMS], *fcoordinates = NULL, *foffsets = NULL
         np.intp_t filter_size, odimensions[NPY_MAXDIMS]
         np.intp_t idimensions[NPY_MAXDIMS], istrides[NPY_MAXDIMS]
         np.intp_t size
         double ***splvals = NULL
-        np.flatiter _io
-        PyArrayIterObject *io 
+        np.flatiter _io, _ii
+        PyArrayIterObject *io, *ii
         np.float64_t *zooms# = zoom_ar ? (Float64*)PyArray_DATA(zoom_ar) : NULL
-        np.float64_t *shifts # = shift_ar ? (Float64*)PyArray_DATA(shift_ar) : NULL
+        np.float64_t *zooms = <Float64 *> PyArray_DATA(zoom_ar) if zoom_ar else NULL
+        np.float64_t *shifts = <Float64 *> PyArray_DATA(shift_ar) if shift_ar else NULL
         int rank = 0, jj, hh, kk, qq
+
+
+    cdef func_i get_value = <func_i> <void *> <Py_intptr_t> funcs[0]
+    cdef func_o save_output = <func_o> <void *> <Py_intptr_t> funcs[1]
 
 
     for kk in range(input.ndim):
@@ -222,7 +281,7 @@ cpdef int _zoom_shift(np.ndarray input, np.ndarray zoom_ar, np.ndarray shift_ar,
     rank = input.ndim
 
       # If the mode is 'constant' we need some temps later:
-    if 1:# if mode == NI_EXTEND_CONSTANT:
+    if mode == NI_EXTEND_CONSTANT:
         zeros = <np.intp_t **> PyDataMem_NEW(rank * sizeof(np.intp_t* ))
         
         ############################################################### NI_unlikely.. wali condition
@@ -279,7 +338,7 @@ cpdef int _zoom_shift(np.ndarray input, np.ndarray zoom_ar, np.ndarray shift_ar,
             if zooms is not NULL:
                 cc *= zoom
 
-        # cc = map_coordinate(cc, idimensions[jj], mode)
+        cc = map_coordinate(cc, idimensions[jj], mode)
         if cc > -1.0:
             if zeros is not NULL and zeros[jj] is not NULL:
                 zeros[jj][kk] = 0
@@ -304,6 +363,7 @@ cpdef int _zoom_shift(np.ndarray input, np.ndarray zoom_ar, np.ndarray shift_ar,
                         if idx < 0:
                             idx = s2 * <np.intp_t> (-idx / s2) +idx
                             # idx =   ############Apply if coniiotn line  786
+                            idx = idx + s2 if idx <= 1 - len else - idx
 
                         elif idx >= len:
                             idx -= s2 * <np.intp_t> (idx / s2)
@@ -316,7 +376,7 @@ cpdef int _zoom_shift(np.ndarray input, np.ndarray zoom_ar, np.ndarray shift_ar,
                 splvals[jj][kk] = <double *> PyDataMem_NEW((order + 1) * sizeof(double))
                 # NI_unlikely line 798
 
-                spline_coefficients(cc, order, splvals[jj][kk]) #######################Functions  
+                spline_coefficients(cc, order, splvals[jj][kk])
 
             else:
                 zeros[jj][kk] = 1
@@ -327,7 +387,9 @@ cpdef int _zoom_shift(np.ndarray input, np.ndarray zoom_ar, np.ndarray shift_ar,
     
     # Iterator initialzation
     _io = np.Pyarray_Iter_New(output)
+    _ii = np.Pyarray_Iter_New(input)
     io = <PyArrayIterObject *> _io
+    ii = <PyArrayIterObject *> _ii
 
     fcoordinates = <np.intp_t *> PyDataMem_NEW(rank * filter_size * sizeof(np.intp_t))
     foffsets = <np.intp_t *> PyDataMem_NEW(filter_size * sizeof(np.intp_t))
@@ -396,9 +458,9 @@ cpdef int _zoom_shift(np.ndarray input, np.ndarray zoom_ar, np.ndarray shift_ar,
                 # use normal offsets:
                 idx += oo + foffsets[hh]
 
-            # use fucntion for getting values
-            # func get value
             # calculate inerpolated values:
+
+            get_value(Np.PyArray_ITER_DATA(_ii), _ii, ii, input, idx, &coeff, idx)
 
             for jj in range(rank):
                 if order > 0:
@@ -411,6 +473,23 @@ cpdef int _zoom_shift(np.ndarray input, np.ndarray zoom_ar, np.ndarray shift_ar,
 
     # Store output
     # Again some kind of macros from line 919
+
+    if output.dtype in [np.uint8, np.uint16, np.uint32, np.uint64]:
+        t = t + 0.5 if t > 0 else t = 0
+    
+    if output.dtype in [np.int8, np.int16, np.int32, np.int64]:
+        t = t + 0.5 if  > 0 else t = t - 0.5
+
+    # Repeat this code for every case
+    # if output.dtype == np.int8 
+    #     if t > maxof np.int8_t:
+    #         t = maxof np.int8_t
+    #     elif t < min of np.int8_t:
+    #         t = min of np.int8_t
+    
+    save_output(np.PyArray_ITER_DATA(_io), t, output)
+
+    
 
     if zeros:
         for jj in range(rank):
@@ -437,7 +516,7 @@ cpdef int _zoom_shift(np.ndarray input, np.ndarray zoom_ar, np.ndarray shift_ar,
 
 
 ######################################################################
-# IMPLEMENTATION OF THE FUNCTION _ni-GEOMETRIC _geometric_Transfor
+# IMPLEMENTATION OF THE FUNCTION _ni-GEOMETRIC _geometric_Transform
 ######################################################################
 
 cpdef _geometric_Transform(p.ndarray input, np.ndarray fnc, np.ndarray coodinates, 
@@ -688,33 +767,4 @@ cpdef _geometric_Transform(p.ndarray input, np.ndarray fnc, np.ndarray coodinate
     PyDataMem_FREE(fcoordinates)
 
     return 1
-
-
-
-
-
-                
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
