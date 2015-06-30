@@ -267,7 +267,7 @@ def find_objects(input, max_label=0):
     if max_label < 1:
         max_label = input.max()
 
-    return _nd_image.find_objects(input, max_label)
+    return _nd_image._findObjects(input, max_label)
 
 
 def labeled_comprehension(input, labels, index, func, out_dtype, default, pass_positions=False):
