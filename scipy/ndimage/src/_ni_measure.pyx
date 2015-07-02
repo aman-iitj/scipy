@@ -127,9 +127,9 @@ cdef inline findObjectsPoint(data_t *data, np.flatiter _iti, PyArrayIterObject *
 # Implementaion of find_Objects function:-
 ######################################################################
 
-cpdef _findObjects(np.ndarray input, np.intp_t max_label):
+cpdef _findObjects(np.ndarray input_t, np.intp_t max_label):
     cdef:
-        funcs = get_funcs(input.take([0]))
+        funcs = get_funcs(input_t.take([0]))
 
         int ii, rank, size_regions
         int start, jj, idx, end
@@ -139,8 +139,11 @@ cpdef _findObjects(np.ndarray input, np.intp_t max_label):
         PyArrayIterObject *iti
 
         func_p findObjectsPoint = <func_p> <void *> <Py_intptr_t> funcs
+        np.ndarray input 
+        int flags = np.NPY_CONTIGUOUS | np.NPY_NOTSWAPPED | np.NPY_ALIGNED
 
-    rank = input.ndim
+    rank = input_t.ndim
+    input = np.PyArray_FROM_OF(input_t , flags)
 
     # Array Iterator defining and Initialization:
     _iti = np.PyArray_IterNew(input)
