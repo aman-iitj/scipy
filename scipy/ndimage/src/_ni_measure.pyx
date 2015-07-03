@@ -137,7 +137,8 @@ cpdef _findObjects(np.ndarray input, np.intp_t max_label):
 
     cdef:
         int ii, rank, size_regions
-        int start, jj, idx, end
+        int jj, idx
+        np.intp_t start, end
         np.intp_t *regions
 
         # Array Iterator defining and Initialization:
