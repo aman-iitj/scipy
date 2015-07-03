@@ -57,7 +57,7 @@ ctypedef fused data_t:
 
 ctypedef void (*func_p)(void *data, np.flatiter iti, PyArrayIterObject *iti, 
                         np.ndarray input, np.intp_t max_label, np.intp_t* regions, 
-                        int rank) nogil
+                        int rank)
 
 def get_funcs(np.ndarray[data_t] input):
     return (<Py_intptr_t> findObjectsPoint[data_t])
@@ -100,7 +100,7 @@ cdef inline findObjectsPoint(data_t *data, np.flatiter _iti, PyArrayIterObject *
 
     # only integer or boolean values are allowed, since s_index is being used in indexing
     # cdef np.uintp_t s_index = deref_p(data, _iti, input) - 1
-    cdef np.intp_t s_index = <np.intp_t>((<data_t *>np.PyArray_ITER_DATA(_iti))[0])
+    cdef np.intp_t s_index = <np.intp_t>((<np.intp_t *> np.PyArray_ITER_DATA(_iti))[0])
 
     if s_index >=0  and s_index < max_label:
         if rank > 0:
