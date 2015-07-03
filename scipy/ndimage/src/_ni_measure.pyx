@@ -89,7 +89,7 @@ cdef inline findObjectsPoint(void *data, np.flatiter _iti, PyArrayIterObject *it
                                 np.ndarray input, np.intp_t max_label, np.intp_t* regions,
                                 int rank):
     cdef int kk =0
-    cdef np.intp_t cc
+    cdef int cc
     
     # cdef func2_p deref_p
     # if np.PyArray_ISBYTESWAPPED(input) == True:
@@ -100,7 +100,7 @@ cdef inline findObjectsPoint(void *data, np.flatiter _iti, PyArrayIterObject *it
 
     # only integer or boolean values are allowed, since s_index is being used in indexing
     # cdef np.uintp_t s_index = deref_p(data, _iti, input) - 1
-    cdef np.intp_t s_index = <np.intp_t>((<np.intp_t *> np.PyArray_ITER_DATA(_iti))[0])
+    cdef int s_index = <np.intp_t>((<int *> np.PyArray_ITER_DATA(_iti))[0])
 
     if s_index >=0  and s_index < max_label:
         if rank > 0:
