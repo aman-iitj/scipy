@@ -14,7 +14,7 @@ cdef extern from *:
 
 ctypedef void (*PyArray_CopySwapFunc)(void *, void *, int, void *)
 
-cdef extern from "numpy/arrayobject.h" nogil:
+cdef extern from "numpy/arrayobject.h":
     ctypedef struct PyArrayIterObject:
         np.intp_t *coordinates
         char *dataptr
@@ -55,7 +55,7 @@ ctypedef fused data_t:
 # Function Specializers and asociate function for using fused type
 #####################################################################
 
-ctypedef void (*func_p)(void *data, np.flatiter iti, PyArrayIterObject *iti, 
+ctypedef void (*func_p)(np.intp_t *data, np.flatiter iti, PyArrayIterObject *iti, 
                         np.ndarray input, np.intp_t max_label, np.intp_t* regions, 
                         int rank)
 
@@ -85,7 +85,7 @@ cdef data_t get_misaligned_from_iter(data_t *data, np.flatiter iter, np.ndarray 
 # Update Regions According to Input Data Type
 ######################################################################
 
-cdef inline findObjectsPoint(data_t *data, np.flatiter _iti, PyArrayIterObject *iti, 
+cdef inline findObjectsPoint(np.intp_t *data, np.flatiter _iti, PyArrayIterObject *iti, 
                                 np.ndarray input, np.intp_t max_label, np.intp_t* regions,
                                 int rank):
     cdef int kk =0
