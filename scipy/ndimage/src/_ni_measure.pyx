@@ -1,5 +1,5 @@
 ######################################################################
-# Cython version of scipy.ndimage.measurement.find_objects() function.
+# Cython version of ndimage.find_objects() function.
 ######################################################################
 
 cimport cython
@@ -14,7 +14,7 @@ cdef extern from *:
 
 ctypedef void (*PyArray_CopySwapFunc)(void *, void *, int, void *)
 
-cdef extern from "numpy/arrayobject.h":
+cdef extern from "numpy/arrayobject.h" nogil:
     ctypedef struct PyArrayIterObject:
         np.intp_t *coordinates
         char *dataptr
@@ -30,6 +30,7 @@ cdef extern from "numpy/arrayobject.h":
         PyArray_Descr *descr
         int nd
 
+    void *PyArray_ITER_DATA(PyArrayIterObject *it)
     PyArray_Descr *PyArray_DESCR(PyArrayObject* arr)
 
     void *PyDataMem_NEW(size_t)
@@ -37,7 +38,7 @@ cdef extern from "numpy/arrayobject.h":
 
 
 ######################################################################
-# Use of Cython's type templates for type specialization
+# Use Cython's type templates for type speecialization
 ######################################################################
 
 # Only integer values are allowed.
@@ -55,52 +56,52 @@ ctypedef fused data_t:
 # Function Specializers and asociate function for using fused type
 #####################################################################
 
-ctypedef void (*func_p)(np.intp_t *data, np.flatiter iti, PyArrayIterObject *iti, 
+ctypedef void (*func_p)(void *data, np.flatiter iti, PyArrayIterObject *iti, 
                         np.ndarray input, np.intp_t max_label, np.intp_t* regions, 
-                        int rank)
+                        int rank) nogil
 
-# def get_funcs(np.ndarray[data_t] input):
-#     return (<Py_intptr_t> findObjectsPoint[data_t])
+def get_funcs(np.ndarray[data_t] input):
+    return (<Py_intptr_t> findObjectsPoint[data_t])
 
 
 ######################################################################
-# Dereferencing and Dealing with Misalligned pointers
+# Dereferncing pointer and Dealing with Misalligned pointers
 ######################################################################
 
 ctypedef data_t (* func2_p)(data_t *, np.flatiter, np.ndarray)
 
-# cdef data_t get_from_iter(data_t *data, np.flatiter iter, np.ndarray arr):
-#     return (<data_t *>np.PyArray_ITER_DATA(iter))[0]
+cdef data_t get_from_iter(data_t *data, np.flatiter iter, np.ndarray arr):
+    return (<data_t *>np.PyArray_ITER_DATA(iter))[0]
 
-# cdef data_t get_misaligned_from_iter(data_t *data, np.flatiter iter, np.ndarray arr):
+cdef data_t get_misaligned_from_iter(data_t *data, np.flatiter iter, np.ndarray arr):
 
-#     cdef data_t ret = 0
-#     cdef PyArray_CopySwapFunc copyswap = <PyArray_CopySwapFunc> <void *> PyArray_DESCR(<PyArrayObject*> arr).f.copyswap
+    cdef data_t ret = 0
+    cdef PyArray_CopySwapFunc copyswap = <PyArray_CopySwapFunc> <void *> PyArray_DESCR(<PyArrayObject*> arr).f.copyswap
 
-#     copyswap(&ret, np.PyArray_ITER_DATA(iter), 1,<void *> arr)
+    copyswap(&ret, np.PyArray_ITER_DATA(iter), 1,<void *> arr)
 
-#     return ret
+    return ret
+
 
 ######################################################################
 # Update Regions According to Input Data Type
 ######################################################################
 
-cdef inline findObjectsPoint(void *data, np.flatiter _iti, PyArrayIterObject *iti, 
+cdef int findObjectsPoint(data_t *data, np.flatiter _iti, PyArrayIterObject *iti, 
                                 np.ndarray input, np.intp_t max_label, np.intp_t* regions,
                                 int rank):
     cdef int kk =0
-    cdef int cc
+    cdef np.intp_t cc
     
-    # cdef func2_p deref_p
-    # if np.PyArray_ISBYTESWAPPED(input) == True:
-    #     deref_p = get_misaligned_from_iter
+    cdef func2_p deref_p
+    if np.PyArray_ISBYTESWAPPED(input) == True:
+        deref_p = get_misaligned_from_iter
 
-    # else:
-    #     deref_p = get_from_iter
+    else:
+        deref_p = get_from_iter
 
     # only integer or boolean values are allowed, since s_index is being used in indexing
-    # cdef np.uintp_t s_index = deref_p(data, _iti, input) - 1
-    cdef int s_index = <np.intp_t>((<int *> np.PyArray_ITER_DATA(_iti))[0])
+    cdef np.uintp_t s_index = deref_p(data, _iti, input) - 1
 
     if s_index >=0  and s_index < max_label:
         if rank > 0:
@@ -123,60 +124,60 @@ cdef inline findObjectsPoint(void *data, np.flatiter _iti, PyArrayIterObject *it
 
     return 1
 
+
 ######################################################################
 # Implementaion of find_Objects function:-
 ######################################################################
 
-cpdef _findObjects(np.ndarray input_t, np.intp_t max_label):
-    cdef:
-        # funcs = get_funcs(input_t.take([0]))
 
+cpdef _findObjects(np.ndarray input, np.intp_t max_label):
+    cdef funcs = get_funcs(input.take([0]))
+    
+    # cdef func2_p deref_p 
+
+    cdef:
         int ii, rank, size_regions
         int start, jj, idx, end
-        int *regions = NULL
+        np.intp_t *regions
 
+        # Array Iterator defining and Initialization:
         np.flatiter _iti
         PyArrayIterObject *iti
 
-        # func_p findObjectsPoint = <func_p> <void *> <Py_intptr_t> funcs
-        np.ndarray input 
-        int flags = np.NPY_CONTIGUOUS | np.NPY_NOTSWAPPED | np.NPY_ALIGNED
+    cdef:
+        func_p findObjectsPoint = <func_p> <void *> <Py_intptr_t> funcs
 
-    rank = input_t.ndim
-    input = np.PyArray_FROM_OF(input_t , flags)
-
-    # Array Iterator defining and Initialization:
-    _iti = np.PyArray_IterNew(input)
-    iti = <PyArrayIterObject *> _iti
-
-    # If iterator is contiguous, PyArray_ITER_NEXT will treat it as 1D Array
-    iti.contiguous = 0
- 
-    # Declaring output array
-    size_regions = 0
-
+    rank = input.ndim
+    
     if max_label < 0:
         max_label = 0
-    elif max_label > 0:
+    
+    # Declaring output array
+    size_regions = 0
+    if max_label >0:
         if rank > 0:
             size_regions = 2 * max_label * rank
 
         else:
             size_regions = max_label
         
-        regions = <int *> PyDataMem_NEW(size_regions * sizeof(int))
-        if regions == NULL:
-            raise MemoryError()
+        regions = <np.intp_t *> PyDataMem_NEW(size_regions * sizeof(np.intp_t))
 
     else:
         regions = NULL
-    
 
     if rank > 0:
         for jj in range(size_regions):
             regions[jj] = -1
 
-    # Iteration over array:
+
+    _iti = np.PyArray_IterNew(input)
+    iti = <PyArrayIterObject *> _iti
+
+    # if iterator is contiguos, PyArray_ITER_NEXT will treat it as 1D Array
+    iti.contiguous = 0
+
+    #Iteration over all points:
     while np.PyArray_ITER_NOTDONE(_iti):
         findObjectsPoint(np.PyArray_ITER_DATA(_iti), _iti, iti, input, 
                         max_label, regions, rank)
@@ -202,7 +203,7 @@ cpdef _findObjects(np.ndarray input_t, np.intp_t max_label):
 
         else:
             result.append(None)
-    
+
     PyDataMem_FREE(regions)
 
     return result
