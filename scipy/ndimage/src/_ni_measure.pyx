@@ -14,6 +14,13 @@ cdef extern from *:
 
 ctypedef void (*PyArray_CopySwapFunc)(void *, void *, int, void *)
 
+cdef extern from "Python.h" nogil:
+    np.PyObject* PyTuple_New(int len)
+    np.PyObject* PyLong_FromSsize_t(int v)
+    np.PyObject* PySlice_New(np.PyObject *start, np.PyObject *stop, np.PyObject *step)
+    int PyList_SetItem(np.PyObject *list, int index, np.PyObject *item)
+
+
 cdef extern from "numpy/arrayobject.h" nogil:
     ctypedef struct PyArrayIterObject:
         np.intp_t *coordinates
@@ -184,6 +191,11 @@ cpdef _findObjects(np.ndarray input, np.intp_t max_label):
                         max_label, regions, rank)
         np.PyArray_ITER_NEXT(_iti)
 
+    result = []
+    for ii in range(size_regions):
+        result.append(regions[ii])
+    return result
+
     # result = []
 
     # for ii in range(max_label):
@@ -208,26 +220,32 @@ cpdef _findObjects(np.ndarray input, np.intp_t max_label):
     # PyDataMem_FREE(regions)
 
     # return result
-    cdef:
-        np.PyObject *result = NULL, *ttuple = NULL, *start = NULL, *end = NULL
-        np.PyObject *slc = NULL
 
-    idx = size_regions
-    for ii in range(max_label):
-        if regions[idx] >= 0:
-            ttuple = <np.PyObject *> < Py_intptr_t>np.PyTuple_New(rank)
 
-            for jj in range(rank):
-                start = <np.PyObject *> < Py_intptr_t>np.PyLong_FromSsize_t(regions[idx + jj])
-                end = <np.PyObject *> < Py_intptr_t>np.PyLong_FromSsize_t(regions[idx + jj + rank])
 
-                slc =  <np.PyObject *> < Py_intptr_t>np.PySlice_New(< Py_intptr_t>start, < Py_intptr_t>end,< Py_intptr_t>NULL)
 
-                start = NULL
-                end = NULL
-            np.PyList_SetItem(< Py_intptr_t>result, < Py_intptr_t>ii,< Py_intptr_t> ttuple)
-            ttuple = NULL
 
-            np.PyList_SetItem(< Py_intptr_t>result, < Py_intptr_t>ii, np.Py_None)
 
-    return < Py_intptr_t> result
+    # cdef:
+    #     np.PyObject *result = NULL, *ttuple = NULL, *start = NULL, *end = NULL
+    #     np.PyObject *slc = NULL
+
+    # idx = size_regions
+    # for ii in range(max_label):
+    #     if regions[idx] >= 0:
+    #         ttuple = <np.PyObject *> < Py_intptr_t>PyTuple_New(rank)
+
+    #         for jj in range(rank):
+    #             start = <np.PyObject *> < Py_intptr_t>PyLong_FromSsize_t(regions[idx + jj])
+    #             end = <np.PyObject *> < Py_intptr_t>PyLong_FromSsize_t(regions[idx + jj + rank])
+
+    #             slc =  <np.PyObject *> < Py_intptr_t>PySlice_New(start, end,NULL)
+
+    #             start = NULL
+    #             end = NULL
+    #         PyList_SetItem(result, ii, ttuple)
+    #         ttuple = NULL
+
+    #         PyList_SetItem(result, ii, <np.PyObject *> <int>np.Py_None)
+
+    # return 1

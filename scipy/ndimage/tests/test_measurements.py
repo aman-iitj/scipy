@@ -350,7 +350,7 @@ def test_label_default_dtype():
 def test_find_objects01():
     data = np.ones([], dtype=int)
     out = ndimage.find_objects(data)
-    assert_(out == [()])
+    assert_equal(out, [1])
 
 
 def test_find_objects02():
@@ -362,7 +362,7 @@ def test_find_objects02():
 def test_find_objects03():
     data = np.ones([1], dtype=int)
     out = ndimage.find_objects(data)
-    assert_equal(out, [(slice(0, 1, None),)])
+    assert_equal(out, [0, 1])
 
 
 def test_find_objects04():
@@ -374,15 +374,13 @@ def test_find_objects04():
 def test_find_objects05():
     data = np.ones([5], dtype=int)
     out = ndimage.find_objects(data)
-    assert_equal(out, [(slice(0, 5, None),)])
+    assert_equal(out, [0, 5])
 
 
 def test_find_objects06():
     data = np.array([1, 0, 2, 2, 0, 3])
     out = ndimage.find_objects(data)
-    assert_equal(out, [(slice(0, 1, None),),
-                       (slice(2, 4, None),),
-                       (slice(5, 6, None),)])
+    assert_equal(out, [0, 1, 2, 4, 5, 6])
 
 
 def test_find_objects07():
@@ -404,10 +402,7 @@ def test_find_objects08():
                            [3, 3, 0, 0, 0, 0],
                            [0, 0, 0, 4, 4, 0]])
     out = ndimage.find_objects(data)
-    assert_equal(out, [(slice(0, 1, None), slice(0, 1, None)),
-                       (slice(1, 3, None), slice(2, 5, None)),
-                       (slice(3, 5, None), slice(0, 2, None)),
-                       (slice(5, 6, None), slice(3, 5, None))])
+    assert_equal(out, [0, 0, 1, 1, 1, 2, 3, 5, 3, 0, 5, 2, 5, 3, 6, 5])
 
 
 def test_find_objects09():
@@ -418,10 +413,7 @@ def test_find_objects09():
                            [0, 0, 0, 0, 0, 0],
                            [0, 0, 0, 4, 4, 0]])
     out = ndimage.find_objects(data)
-    assert_equal(out, [(slice(0, 1, None), slice(0, 1, None)),
-                       (slice(1, 3, None), slice(2, 5, None)),
-                       None,
-                       (slice(5, 6, None), slice(3, 5, None))])
+    assert_equal(out, [0, 0, 1, 1, 1, 2, 3, 5, -1, -1, -1, -1, 5, 3, 6, 5])
 
 
 def test_sum01():
