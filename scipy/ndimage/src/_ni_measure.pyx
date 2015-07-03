@@ -138,7 +138,7 @@ cpdef _findObjects(np.ndarray input, np.intp_t max_label):
     cdef:
         int ii, rank, size_regions
         int jj, idx
-        np.intp_t start, end
+        # np.intp_t start, end
         np.intp_t *regions
 
         # Array Iterator defining and Initialization:
@@ -184,27 +184,50 @@ cpdef _findObjects(np.ndarray input, np.intp_t max_label):
                         max_label, regions, rank)
         np.PyArray_ITER_NEXT(_iti)
 
-    result = []
+    # result = []
 
+    # for ii in range(max_label):
+    #     if rank > 0:
+    #         idx = 2 * rank * ii
+
+    #     else:
+    #         idx = ii
+
+    #     if regions[idx] >= 0:
+    #         slc = ()
+    #         for jj in range(rank):
+    #             start = regions[idx + jj]
+    #             end = regions[idx + jj + rank]
+
+    #             slc += (slice(start, end),)
+    #         result.append(slc)
+
+    #     else:
+    #         result.append(None)
+
+    # PyDataMem_FREE(regions)
+
+    # return result
+    cdef:
+        np.PyObject *result = NULL, *ttuple = NULL, *start = NULL, *end = NULL
+        np.PyObject *slc = NULL
+
+    idx = size_regions
     for ii in range(max_label):
-        if rank > 0:
-            idx = 2 * rank * ii
-
-        else:
-            idx = ii
-
         if regions[idx] >= 0:
-            slc = ()
+            ttuple = <np.PyObject *> < Py_intptr_t>np.PyTuple_New(rank)
+
             for jj in range(rank):
-                start = regions[idx + jj]
-                end = regions[idx + jj + rank]
+                start = <np.PyObject *> < Py_intptr_t>np.PyLong_FromSsize_t(regions[idx + jj])
+                end = <np.PyObject *> < Py_intptr_t>np.PyLong_FromSsize_t(regions[idx + jj + rank])
 
-                slc += (slice(start, end),)
-            result.append(slc)
+                slc =  <np.PyObject *> < Py_intptr_t>np.PySlice_New(< Py_intptr_t>start, < Py_intptr_t>end,< Py_intptr_t>NULL)
 
-        else:
-            result.append(None)
+                start = NULL
+                end = NULL
+            np.PyList_SetItem(< Py_intptr_t>result, < Py_intptr_t>ii,< Py_intptr_t> ttuple)
+            ttuple = NULL
 
-    PyDataMem_FREE(regions)
+            np.PyList_SetItem(< Py_intptr_t>result, < Py_intptr_t>ii, np.Py_None)
 
-    return result
+    return < Py_intptr_t> result
