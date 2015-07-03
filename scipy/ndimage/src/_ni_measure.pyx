@@ -133,7 +133,7 @@ cpdef _findObjects(np.ndarray input_t, np.intp_t max_label):
 
         int ii, rank, size_regions
         int start, jj, idx, end
-        np.intp_t *regions = NULL
+        int *regions = NULL
 
         np.flatiter _iti
         PyArrayIterObject *iti
@@ -164,7 +164,7 @@ cpdef _findObjects(np.ndarray input_t, np.intp_t max_label):
         else:
             size_regions = max_label
         
-        regions = <np.intp_t *> PyDataMem_NEW(size_regions * sizeof(np.intp_t))
+        regions = <int *> PyDataMem_NEW(size_regions * sizeof(int))
         if regions == NULL:
             raise MemoryError()
 
