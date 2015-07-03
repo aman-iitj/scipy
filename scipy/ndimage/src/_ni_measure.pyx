@@ -171,40 +171,38 @@ cpdef _findObjects(np.ndarray input_t, np.intp_t max_label):
     else:
         regions = NULL
     
-    try:
-        with nogil:
-            if rank > 0:
-                for jj in range(size_regions):
-                    regions[jj] = -1
 
-            # Iteration over array:
-            while np.PyArray_ITER_NOTDONE(_iti):
-                findObjectsPoint(np.PyArray_ITER_DATA(_iti), _iti, iti, input, 
-                                max_label, regions, rank)
-                np.PyArray_ITER_NEXT(_iti)
+    if rank > 0:
+        for jj in range(size_regions):
+            regions[jj] = -1
 
-        result = []
+    # Iteration over array:
+    while np.PyArray_ITER_NOTDONE(_iti):
+        findObjectsPoint(np.PyArray_ITER_DATA(_iti), _iti, iti, input, 
+                        max_label, regions, rank)
+        np.PyArray_ITER_NEXT(_iti)
 
-        for ii in range(max_label):
-            if rank > 0:
-                idx = 2 * rank * ii
+    result = []
 
-            else:
-                idx = ii
+    for ii in range(max_label):
+        if rank > 0:
+            idx = 2 * rank * ii
 
-            if regions[idx] >= 0:
-                slc = ()
-                for jj in range(rank):
-                    start = regions[idx + jj]
-                    end = regions[idx + jj + rank]
+        else:
+            idx = ii
 
-                    slc += (slice(start, end),)
-                result.append(slc)
+        if regions[idx] >= 0:
+            slc = ()
+            for jj in range(rank):
+                start = regions[idx + jj]
+                end = regions[idx + jj + rank]
 
-            else:
-                result.append(None)
-    except:
-        # clean up and re-raise
-        PyDataMem_FREE(regions)
+                slc += (slice(start, end),)
+            result.append(slc)
+
+        else:
+            result.append(None)
+    
+    PyDataMem_FREE(regions)
 
     return result
