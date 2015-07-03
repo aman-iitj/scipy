@@ -59,8 +59,8 @@ ctypedef void (*func_p)(np.intp_t *data, np.flatiter iti, PyArrayIterObject *iti
                         np.ndarray input, np.intp_t max_label, np.intp_t* regions, 
                         int rank)
 
-def get_funcs(np.ndarray[data_t] input):
-    return (<Py_intptr_t> findObjectsPoint[data_t])
+# def get_funcs(np.ndarray[data_t] input):
+#     return (<Py_intptr_t> findObjectsPoint[data_t])
 
 
 ######################################################################
@@ -69,34 +69,34 @@ def get_funcs(np.ndarray[data_t] input):
 
 ctypedef data_t (* func2_p)(data_t *, np.flatiter, np.ndarray)
 
-cdef data_t get_from_iter(data_t *data, np.flatiter iter, np.ndarray arr):
-    return (<data_t *>np.PyArray_ITER_DATA(iter))[0]
+# cdef data_t get_from_iter(data_t *data, np.flatiter iter, np.ndarray arr):
+#     return (<data_t *>np.PyArray_ITER_DATA(iter))[0]
 
-cdef data_t get_misaligned_from_iter(data_t *data, np.flatiter iter, np.ndarray arr):
+# cdef data_t get_misaligned_from_iter(data_t *data, np.flatiter iter, np.ndarray arr):
 
-    cdef data_t ret = 0
-    cdef PyArray_CopySwapFunc copyswap = <PyArray_CopySwapFunc> <void *> PyArray_DESCR(<PyArrayObject*> arr).f.copyswap
+#     cdef data_t ret = 0
+#     cdef PyArray_CopySwapFunc copyswap = <PyArray_CopySwapFunc> <void *> PyArray_DESCR(<PyArrayObject*> arr).f.copyswap
 
-    copyswap(&ret, np.PyArray_ITER_DATA(iter), 1,<void *> arr)
+#     copyswap(&ret, np.PyArray_ITER_DATA(iter), 1,<void *> arr)
 
-    return ret
+#     return ret
 
 ######################################################################
 # Update Regions According to Input Data Type
 ######################################################################
 
-cdef inline findObjectsPoint(np.intp_t *data, np.flatiter _iti, PyArrayIterObject *iti, 
+cdef inline findObjectsPoint(void *data, np.flatiter _iti, PyArrayIterObject *iti, 
                                 np.ndarray input, np.intp_t max_label, np.intp_t* regions,
                                 int rank):
     cdef int kk =0
     cdef np.intp_t cc
     
-    cdef func2_p deref_p
-    if np.PyArray_ISBYTESWAPPED(input) == True:
-        deref_p = get_misaligned_from_iter
+    # cdef func2_p deref_p
+    # if np.PyArray_ISBYTESWAPPED(input) == True:
+    #     deref_p = get_misaligned_from_iter
 
-    else:
-        deref_p = get_from_iter
+    # else:
+    #     deref_p = get_from_iter
 
     # only integer or boolean values are allowed, since s_index is being used in indexing
     # cdef np.uintp_t s_index = deref_p(data, _iti, input) - 1
@@ -129,7 +129,7 @@ cdef inline findObjectsPoint(np.intp_t *data, np.flatiter _iti, PyArrayIterObjec
 
 cpdef _findObjects(np.ndarray input_t, np.intp_t max_label):
     cdef:
-        funcs = get_funcs(input_t.take([0]))
+        # funcs = get_funcs(input_t.take([0]))
 
         int ii, rank, size_regions
         int start, jj, idx, end
@@ -138,7 +138,7 @@ cpdef _findObjects(np.ndarray input_t, np.intp_t max_label):
         np.flatiter _iti
         PyArrayIterObject *iti
 
-        func_p findObjectsPoint = <func_p> <void *> <Py_intptr_t> funcs
+        # func_p findObjectsPoint = <func_p> <void *> <Py_intptr_t> funcs
         np.ndarray input 
         int flags = np.NPY_CONTIGUOUS | np.NPY_NOTSWAPPED | np.NPY_ALIGNED
 
