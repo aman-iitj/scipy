@@ -417,7 +417,6 @@ def test_sum01():
         output = ndimage.sum(input)
         assert_equal(output, 0.0)
 
-
 def test_sum02():
     for type in types:
         input = np.zeros([0, 4], type)
