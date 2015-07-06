@@ -108,7 +108,7 @@ cdef int findObjectsPoint(data_t *data, np.flatiter _iti, PyArrayIterObject *iti
         deref_p = get_from_iter
 
     # only integer or boolean values are allowed, since s_index is being used in indexing
-    cdef np.uintp_t s_index = deref_p(data, _iti, input) - 1
+    cdef np.intp_t s_index = deref_p(data, _iti, input)
 
     # if s_index >=0  and s_index < max_label:
     #     if rank > 0:
@@ -128,7 +128,7 @@ cdef int findObjectsPoint(data_t *data, np.flatiter _iti, PyArrayIterObject *iti
     #                     regions[s_index + kk + rank] = cc + 1
     #     else:
     #         regions[s_index] = 1
-    regions[rank] += s_index
+    regions[rank] = s_index
 
     return 1
 
@@ -158,25 +158,25 @@ cpdef _findObjects(np.ndarray input, np.intp_t max_label):
 
     rank = input.ndim
     
-    if max_label < 0:
-        max_label = 0
+    # if max_label < 0:
+    #     max_label = 0
     
-    # Declaring output array
-    size_regions = 0
-    if max_label >0:
-        if rank > 0:
-            size_regions = 2 * max_label * rank
-        else:
-            size_regions = max_label
+    # # Declaring output array
+    # size_regions = 0
+    # if max_label >0:
+    #     if rank > 0:
+    #         size_regions = 2 * max_label * rank
+    #     else:
+    #         size_regions = max_label
         
-        regions = <np.intp_t *> PyDataMem_NEW(size_regions * sizeof(np.intp_t))
+    regions = <np.intp_t *> PyDataMem_NEW(input.size * sizeof(np.intp_t))
 
-    else:
-        regions = NULL
+    # else:
+    #     regions = NULL
 
-    if rank > 0:
-        for jj in range(size_regions):
-            regions[jj] = jj
+    # if rank > 0:
+    #     for jj in range(size_regions):
+    #         regions[jj] = jj
 
 
     _iti = np.PyArray_IterNew(input)
@@ -189,11 +189,11 @@ cpdef _findObjects(np.ndarray input, np.intp_t max_label):
     while np.PyArray_ITER_NOTDONE(_iti):
         findObjectsPoint(np.PyArray_ITER_DATA(_iti), _iti, iti, input, 
                         max_label, regions, idx)
-        idx +=1
+        idx += 1
         np.PyArray_ITER_NEXT(_iti)
 
     result = []
-    for ii in range(size_regions):
+    for ii in range(input.size):
         result.append(regions[ii])
     return result
 
