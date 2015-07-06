@@ -406,9 +406,9 @@ def test_label_default_dtype():
 
 
 def test_find_objects09():
-    data = np.asarray([1])
+    data = np.asarray([1 ,2, 3])
     out = ndimage.find_objects(data)
-    assert_equal(out,[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
+    assert_equal(out,[0, 2, 4, 3, 4, 5])
 
 
 def test_sum01():
