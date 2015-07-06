@@ -164,10 +164,12 @@ cpdef _findObjects(np.ndarray input, np.intp_t max_label):
     size_regions = 0
     if max_label >0:
         if rank > 0:
-            size_regions = 2 * max_label * rank
-
+            # size_regions = 2 * max_label * rank
+            size_regions = 15
         else:
-            size_regions = max_label
+            # size_regions = max_label
+            size_regions = 15
+
         
         regions = <np.intp_t *> PyDataMem_NEW(size_regions * sizeof(np.intp_t))
 
@@ -176,7 +178,7 @@ cpdef _findObjects(np.ndarray input, np.intp_t max_label):
 
     if rank > 0:
         for jj in range(size_regions):
-            regions[jj] = -1
+            regions[jj] = jj
 
 
     _iti = np.PyArray_IterNew(input)
@@ -185,11 +187,11 @@ cpdef _findObjects(np.ndarray input, np.intp_t max_label):
     # if iterator is contiguos, PyArray_ITER_NEXT will treat it as 1D Array
     iti.contiguous = 0
 
-    #Iteration over all points:
-    while np.PyArray_ITER_NOTDONE(_iti):
-        findObjectsPoint(np.PyArray_ITER_DATA(_iti), _iti, iti, input, 
-                        max_label, regions, rank)
-        np.PyArray_ITER_NEXT(_iti)
+    # #Iteration over all points:
+    # while np.PyArray_ITER_NOTDONE(_iti):
+    #     findObjectsPoint(np.PyArray_ITER_DATA(_iti), _iti, iti, input, 
+    #                     max_label, regions, rank)
+    #     np.PyArray_ITER_NEXT(_iti)
 
     result = []
     for ii in range(size_regions):
