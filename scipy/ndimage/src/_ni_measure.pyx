@@ -64,7 +64,7 @@ ctypedef fused data_t:
 #####################################################################
 
 ctypedef void (*func_p)(void *data, np.flatiter iti, PyArrayIterObject *iti, 
-                        np.ndarray input, np.intp_t max_label, np.intp_t* regions, 
+                        np.ndarray input, np.intp_t* regions, 
                         int rank) nogil
 
 def get_funcs(np.ndarray[data_t] input):
@@ -95,7 +95,7 @@ cdef data_t get_misaligned_from_iter(data_t *data, np.flatiter iter, np.ndarray 
 ######################################################################
 
 cdef int findObjectsPoint(data_t *data, np.flatiter _iti, PyArrayIterObject *iti, 
-                                np.ndarray input, np.intp_t max_label, np.intp_t* regions,
+                                np.ndarray input, np.intp_t* regions,
                                 int rank):
     cdef int kk =0
     cdef np.intp_t cc
@@ -110,24 +110,7 @@ cdef int findObjectsPoint(data_t *data, np.flatiter _iti, PyArrayIterObject *iti
     # only integer or boolean values are allowed, since s_index is being used in indexing
     cdef np.intp_t s_index = deref_p(data, _iti, input)
 
-    # if s_index >=0  and s_index < max_label:
-    #     if rank > 0:
-    #         s_index *= 2 * rank
-    #         if regions[s_index] < 0:
-    #             for kk in range(rank):
-    #                 cc = iti.coordinates[kk]
-    #                 regions[s_index + kk] = cc
-    #                 regions[s_index + kk + rank] = cc + 1
-
-    #         else:
-    #             for kk in range(rank):
-    #                 cc = iti.coordinates[kk]
-    #                 if cc < regions[s_index + kk]:
-    #                     regions[s_index + kk] = cc
-    #                 if cc +1 > regions[s_index + kk + rank]:
-    #                     regions[s_index + kk + rank] = cc + 1
-    #     else:
-    #         regions[s_index] = 1
+  
     regions[rank] = s_index
 
     return 1
@@ -157,26 +140,10 @@ cpdef _findObjects(np.ndarray input, np.intp_t max_label):
         func_p findObjectsPoint = <func_p> <void *> <Py_intptr_t> funcs
 
     rank = input.ndim
-    
-    # if max_label < 0:
-    #     max_label = 0
-    
-    # # Declaring output array
-    # size_regions = 0
-    # if max_label >0:
-    #     if rank > 0:
-    #         size_regions = 2 * max_label * rank
-    #     else:
-    #         size_regions = max_label
         
     regions = <np.intp_t *> PyDataMem_NEW(input.size * sizeof(np.intp_t))
 
-    # else:
-    #     regions = NULL
 
-    # if rank > 0:
-    #     for jj in range(size_regions):
-    #         regions[jj] = jj
 
 
     _iti = np.PyArray_IterNew(input)
@@ -188,7 +155,7 @@ cpdef _findObjects(np.ndarray input, np.intp_t max_label):
     #Iteration over all points:
     while np.PyArray_ITER_NOTDONE(_iti):
         findObjectsPoint(np.PyArray_ITER_DATA(_iti), _iti, iti, input, 
-                        max_label, regions, idx)
+                         regions, idx)
         idx += 1
         np.PyArray_ITER_NEXT(_iti)
 
@@ -196,57 +163,3 @@ cpdef _findObjects(np.ndarray input, np.intp_t max_label):
     for ii in range(input.size):
         result.append(regions[ii])
     return result
-
-    # result = []
-
-    # for ii in range(max_label):
-    #     if rank > 0:
-    #         idx = 2 * rank * ii
-
-    #     else:
-    #         idx = ii
-
-    #     if regions[idx] >= 0:
-    #         slc = ()
-    #         for jj in range(rank):
-    #             start = regions[idx + jj]
-    #             end = regions[idx + jj + rank]
-
-    #             slc += (slice(start, end),)
-    #         result.append(slc)
-
-    #     else:
-    #         result.append(None)
-
-    # PyDataMem_FREE(regions)
-
-    # return result
-
-
-
-
-
-
-    # cdef:
-    #     np.PyObject *result = NULL, *ttuple = NULL, *start = NULL, *end = NULL
-    #     np.PyObject *slc = NULL
-
-    # idx = size_regions
-    # for ii in range(max_label):
-    #     if regions[idx] >= 0:
-    #         ttuple = <np.PyObject *> < Py_intptr_t>PyTuple_New(rank)
-
-    #         for jj in range(rank):
-    #             start = <np.PyObject *> < Py_intptr_t>PyLong_FromSsize_t(regions[idx + jj])
-    #             end = <np.PyObject *> < Py_intptr_t>PyLong_FromSsize_t(regions[idx + jj + rank])
-
-    #             slc =  <np.PyObject *> < Py_intptr_t>PySlice_New(start, end,NULL)
-
-    #             start = NULL
-    #             end = NULL
-    #         PyList_SetItem(result, ii, ttuple)
-    #         ttuple = NULL
-
-    #         PyList_SetItem(result, ii, <np.PyObject *> <int>np.Py_None)
-
-    # return 1
