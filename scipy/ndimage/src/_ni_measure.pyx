@@ -64,7 +64,7 @@ ctypedef fused data_t:
 #####################################################################
 
 ctypedef void (*func_p)(void *data, np.flatiter iti, PyArrayIterObject *iti, 
-                        np.ndarray input, np.intp_t* regions, 
+                        np.ndarray input, int* regions, 
                         int rank) nogil
 
 def get_funcs(np.ndarray[data_t] input):
@@ -95,7 +95,7 @@ cdef data_t get_misaligned_from_iter(data_t *data, np.flatiter iter, np.ndarray 
 ######################################################################
 
 cdef int findObjectsPoint(data_t *data, np.flatiter _iti, PyArrayIterObject *iti, 
-                                np.ndarray input, np.intp_t* regions,
+                                np.ndarray input, int* regions,
                                 int rank):
     cdef int kk =0
     cdef np.intp_t cc
@@ -130,7 +130,7 @@ cpdef _findObjects(np.ndarray input, np.intp_t max_label):
         int ii, rank, size_regions
         int jj, idx
         # np.intp_t start, end
-        np.intp_t *regions
+        int *regions
 
         # Array Iterator defining and Initialization:
         np.flatiter _iti
@@ -141,7 +141,7 @@ cpdef _findObjects(np.ndarray input, np.intp_t max_label):
 
     rank = input.ndim
         
-    regions = <np.intp_t *> PyDataMem_NEW(input.size * sizeof(np.intp_t))
+    regions = <int *> PyDataMem_NEW(input.size * sizeof(int))
 
 
 
